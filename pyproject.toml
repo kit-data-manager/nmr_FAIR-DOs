@@ -1,0 +1,173 @@
+# NOTE: this repository uses the tool somesy to help you easily maintain
+# and synchronize all the high-level project metadata across multiple files.
+# To see which other metadata can be added, check out the somesy documentation
+# https://materials-data-science-and-informatics.github.io/somesy/main/
+[tool.somesy.project]
+name = "nmr_FAIR-DOs"
+version = "0.1.0"
+description = "This tool extracts metadata regarding NMR data from multiple repositories and creates FAIR-DOs for them."
+license = "Apache-2.0"
+
+keywords = [
+    "FAIR-DOs",
+    "metadata",
+    "repositories",
+    "NMR"
+]
+repository = "https://github.com/maximiliani/nmr_FAIR-DOs"
+homepage = "https://maximiliani.github.io/nmr_FAIR-DOs"
+documentation = "https://maximiliani.github.io/nmr_FAIR-DOs"
+
+[[tool.somesy.project.people]]
+given-names = "Maximilian"
+family-names = "Inckmann"
+email = "maximilian.inckmann@kit.edu"
+orcid = "https://orcid.org/0009-0005-2800-4833"
+author = true
+maintainer = true
+
+# You also can add more authors, maintainers or contributors here:
+# [[tool.somesy.project.people]]
+# given-names = "Another"
+# family-names = "Contributor"
+# email = "contributor@email.com"
+# orcid = "https://orcid.org/0123-4567-8910-1112"
+# ...
+
+[tool.somesy.config]
+verbose = true
+
+[tool.poetry]
+# ---- DO NOT EDIT - core project metadata managed by somesy  ----
+# to update, edit values in [tool.somesy.project] section
+# and run somesy: poetry run somesy
+name = "nmr_FAIR-DOs"
+version = "0.1.0"
+description = "This tool extracts metadata regarding NMR data from multiple repositories and creates FAIR-DOs for them."
+license = "Apache-2.0"
+
+authors = ["Maximilian Inckmann <maximilian.inckmann@kit.edu>"]
+maintainers = ["Maximilian Inckmann <maximilian.inckmann@kit.edu>"]
+
+keywords = ["FAIR-DOs", "metadata", "repositories", "NMR"]
+repository = "https://github.com/maximiliani/nmr_FAIR-DOs"
+homepage = "https://maximiliani.github.io/nmr_FAIR-DOs"
+documentation = "https://maximiliani.github.io/nmr_FAIR-DOs"
+# ----------------------------------------------------------------
+
+# Python- and Poetry-specific metadata
+# ------------------------------------
+readme = "README.md"
+classifiers = [
+    # TODO: update the classifier strings
+    # (see https://pypi.org/classifiers/)
+    "Operating System :: POSIX :: Linux",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+]
+
+# the Python packages that will be included in a built distribution:
+packages = [{include = "nmr_FAIR_DOs", from = "src"}]
+
+# always include basic info for humans and core metadata in the distribution,
+# include files related to test and documentation only in sdist:
+include = [
+  "*.md", "LICENSE", "LICENSES", ".reuse/dep5", "CITATION.cff", "codemeta.json",
+  { path = "mkdocs.yml", format = "sdist" },
+  { path = "docs", format = "sdist" },
+  { path = "tests", format = "sdist" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+typer = "^0.12.3"
+fastapi = "^0.111.1"
+uvicorn = "^0.30.4"
+
+[tool.poetry.group.dev.dependencies]
+poethepoet = "^0.27.0"
+pre-commit = "^3.5.0"
+pytest = "^8.3.2"
+pytest-cov = "^5.0.0"
+hypothesis = "^6.108.5"
+licensecheck = "^2024.2"
+httpx = "^0.27.0"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.6.0"
+mkdocstrings = {extras = ["python"], version = "^0.25.2"}
+mkdocs-material = "^9.5.30"
+mkdocs-gen-files = "^0.5.0"
+mkdocs-literate-nav = "^0.6.1"
+mkdocs-section-index = "^0.3.9"
+mkdocs-macros-plugin = "^1.0.5"
+markdown-include = "^0.8.1"
+pymdown-extensions = "^10.9"
+markdown-exec = {extras = ["ansi"], version = "^1.9.3"}
+mkdocs-coverage = "^1.1.0"
+mike = "^2.1.2"
+anybadge = "^1.14.0"
+interrogate = "^1.7.0"
+black = "^24.4.2"
+
+[tool.poetry.scripts]
+# put your script entrypoints here
+# some-script = 'module.submodule:some_object'
+nmr_FAIR-DOs-cli = 'nmr_FAIR_DOs.cli:app'
+nmr_FAIR-DOs-api = 'nmr_FAIR_DOs.api:run'
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# NOTE: You can run the following with "poetry poe TASK"
+[tool.poe.tasks]
+init-dev = "pre-commit install"  # run once after clone to enable various tools
+lint = "pre-commit run"  # pass --all-files to check everything
+test = "pytest"  # pass --cov to also collect coverage info
+docs = "mkdocs build"  # run this to generate local documentation
+licensecheck = "licensecheck"  # run this when you add new deps
+
+# Tool Configurations
+# -------------------
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "--cov-report=term-missing:skip-covered"
+filterwarnings = [
+# Example:
+# "ignore::DeprecationWarning:importlib_metadata.*"
+]
+
+[tool.coverage.run]
+source = ["nmr_FAIR_DOs"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.flake8]
+ignore = ["W503"]
+max-line-length = 88
+
+[tool.pydocstyle]
+convention = "google"
+
+[tool.bandit]
+exclude_dirs = ["tests", "scripts"]
+
+[tool.licensecheck]
+using = "poetry"

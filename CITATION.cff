@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+type: software
+message: If you use this software, please cite it using this metadata.
+
+title: "nmr_FAIR-DOs"
+version: "0.1.0"
+abstract: "This tool extracts metadata regarding NMR data from multiple repositories
+  and creates FAIR-DOs for them."
+repository-code: "https://github.com/maximiliani/nmr_FAIR-DOs"
+license: "Apache-2.0"
+keywords:
+- FAIR-DOs
+- metadata
+- repositories
+- NMR
+authors:
+- family-names: Inckmann
+  given-names: Maximilian
+  email: maximilian.inckmann@kit.edu
+  orcid: https://orcid.org/0009-0005-2800-4833
+  affiliation: Karlsruhe Institute of Technology (KIT)
+contact:
+- orcid: https://orcid.org/0009-0005-2800-4833
+  family-names: Inckmann
+  email: maximilian.inckmann@kit.edu
+  given-names: Maximilian
+url: https://maximiliani.github.io/nmr_FAIR-DOs

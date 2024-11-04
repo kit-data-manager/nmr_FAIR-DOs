@@ -1,0 +1,44 @@
+{
+  "@context": [
+    "https://doi.org/10.5063/schema/codemeta-2.0",
+    "https://w3id.org/software-iodata",
+    "https://raw.githubusercontent.com/jantman/repostatus.org/master/badges/latest/ontology.jsonld",
+    "https://schema.org",
+    "https://w3id.org/software-types"
+  ],
+  "@type": "SoftwareSourceCode",
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Maximilian",
+      "familyName": "Inckmann",
+      "email": "maximilian.inckmann@kit.edu",
+      "@id": "https://orcid.org/0009-0005-2800-4833"
+    }
+  ],
+  "name": "nmr_FAIR-DOs",
+  "description": "This tool extracts metadata regarding NMR data from multiple repositories and creates FAIR-DOs for them.",
+  "version": "0.1.0",
+  "keywords": [
+    "FAIR-DOs",
+    "metadata",
+    "repositories",
+    "NMR"
+  ],
+  "maintainer": [
+    {
+      "@type": "Person",
+      "givenName": "Maximilian",
+      "familyName": "Inckmann",
+      "email": "maximilian.inckmann@kit.edu",
+      "@id": "https://orcid.org/0009-0005-2800-4833"
+    }
+  ],
+  "license": [
+    "https://spdx.org/licenses/Apache-2.0"
+  ],
+  "softwareHelp": "https://maximiliani.github.io/nmr_FAIR-DOs",
+  "codeRepository": "https://github.com/maximiliani/nmr_FAIR-DOs",
+  "buildInstructions": "https://maximiliani.github.io/nmr_FAIR-DOs",
+  "url": "https://maximiliani.github.io/nmr_FAIR-DOs"
+}

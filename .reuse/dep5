@@ -1,0 +1,12 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: nmr_FAIR-DOs
+Upstream-Contact: Maximilian Inckmann <maximilian.inckmann@kit.edu>
+Source: https://github.com/maximiliani/nmr_FAIR-DOs
+
+Files: .gitignore pyproject.toml poetry.lock .pre-commit-config.yaml codemeta.json CITATION.cff README.md RELEASE_NOTES.md CHANGELOG.md CODE_OF_CONDUCT.md AUTHORS.md CONTRIBUTING.md .gitlab-ci.yml .gitlab/* .github/* mkdocs.yml docs/*
+Copyright: Copyright © 2024 Karlsruhe Institute of Technology (KIT)
+License: CC0-1.0
+
+Files: src/nmr_FAIR_DOs/* tests/*
+Copyright: Copyright © 2024 Karlsruhe Institute of Technology (KIT)
+License: Apache-2.0
