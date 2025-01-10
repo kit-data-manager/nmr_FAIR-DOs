@@ -1,5 +1,3 @@
-"""Mkdocs hook to run tests with coverage collection and generate a badge."""
-
 #  SPDX-FileCopyrightText: 2025 Karlsruhe Institute of Technology <maximilian.inckmann@kit.edu>
 #  SPDX-License-Identifier: Apache-2.0
 #
@@ -129,140 +127,67 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-
-#
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-#
-#  SPDX-License-Identifier: Apache-2.0
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-#
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   You may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-#
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-
-#
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
+import asyncio
 import logging
-from io import StringIO
-from pathlib import Path
+from datetime import datetime
 
-import anybadge
-import pytest
-from coverage import Coverage
+import aiohttp
 
-log = logging.getLogger("mkdocs")
+logger = logging.getLogger(__name__)
 
 
-badge_colors = {
-    20.0: "red",
-    40.0: "orange",
-    60.0: "yellow",
-    80.0: "greenyellow",
-    90.0: "green",
-}
-"""Colors for overall coverage percentage (0-100)."""
+async def fetch_data(url: str):
+    """
+    Fetches data from the specified URL.
+
+    Args:
+        url (str): The URL to fetch data from
+
+    Returns:
+        dict: The fetched data
+
+    Raises:
+        ValueError: If the URL is invalid or the data cannot be fetched
+    """
+    if not url or url is None or not isinstance(url, str):
+        raise ValueError("Invalid URL")
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    logger.error(f"Failed to fetch {url}: {response.status}", response)
+                    raise ValueError(
+                        f"Failed to fetch {url}: {response.status}",
+                        response,
+                        datetime.now().isoformat(),
+                    )
+    except Exception as e:
+        print(f"Error fetching {url}: {str(e)}")
+        raise ValueError(str(e), url, datetime.now().isoformat())
 
 
-def on_pre_build(config):  # noqa
-    """Generate coverage report if it is missing and create a badge."""
-    if not Path("htmlcov").is_dir() or not Path(".coverage").is_file():
-        log.info("Missing htmlcov or .coverage, running pytest to collect.")
-        pytest.main(["--cov", "--cov-report=html"])
-    else:
-        log.info("Using existing coverage data.")
+async def fetch_multiple(urls: list[str]):
+    """
+    Fetches data from multiple URLs.
 
-    cov = Coverage()
-    cov.load()
-    cov_percent = int(cov.report(file=StringIO()))
-    log.info(f"Test Coverage: {cov_percent}%, generating badge.")
+    Args:
+        urls (List[str]): A list of URLs to fetch data from
 
-    badge = anybadge.Badge(
-        "coverage",
-        cov_percent,
-        value_prefix=" ",
-        value_suffix="% ",
-        thresholds=badge_colors,
-    )
+    Returns:
+        List[dict]: A list of fetched data
 
-    badge_svg = Path("docs/coverage_badge.svg")
-    if badge_svg.is_file():
-        badge_svg.unlink()
-    badge.write_badge(badge_svg)
+    Raises:
+        ValueError: If the URLs are invalid or the data cannot be fetched
+    """
+    if not urls or urls is None or not isinstance(urls, list):
+        raise ValueError("Invalid URLs. Please provide a list of URLs.")
+
+    async with aiohttp.ClientSession():
+        tasks = []
+        for url in urls:
+            tasks.append(asyncio.create_task(fetch_data(url)))
+        results = await asyncio.gather(*tasks)
+        return results

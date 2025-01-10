@@ -79,10 +79,16 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
-typer = "^0.12.3"
-fastapi = "^0.111.1"
-uvicorn = "^0.30.4"
+python = "^3.12"
+typer = "^0.15.1"
+fastapi = "^0.115.6"
+uvicorn = "^0.34.0"
+basemodel = "^20190604.1625"
+aiohttp = "^3.11.11"
+elasticsearch = "^8.17.0"
+python-dotenv = "^1.0.1"
+types-requests = "^2.32.0.20241016"
+requests = "^2.32.3"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.27.0"

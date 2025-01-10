@@ -364,3 +364,9 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+legacyRecords/
+*.json
+FAIR-DO-Lab/
+tpm-test/
+elastic-test/
+src/legacy
