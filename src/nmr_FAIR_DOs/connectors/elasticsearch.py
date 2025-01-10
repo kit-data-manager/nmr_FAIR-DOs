@@ -46,7 +46,7 @@ class ElasticsearchConnector:
 
         self._client = Elasticsearch(hosts=self._url, api_key=self._apikey)
 
-        logger.info("Connected to Elasticsearch", self._client.info())
+        logger.info("Connected to Elasticsearch", self._client.info().__repr__())
 
         # Check if the client is connected
         if not self._client.ping():
@@ -59,13 +59,13 @@ class ElasticsearchConnector:
             self._client.indices.create(index=indexName)
             logger.info("Created index " + indexName)
 
-    def addPIDRecord(self, pidRecord: PIDRecord):
+    async def addPIDRecord(self, pidRecord: PIDRecord):
         result: dict = {"pid": pidRecord.getPID()}
 
         # Extract the entries from the PID record
         for attribute, value in pidRecord.getEntries().items():
             # Extract the key
-            key = extractDataTypeNameFromPID(attribute)
+            key = await extractDataTypeNameFromPID(attribute)
 
             values = [
                 {"value": i.value if isinstance(i, PIDRecordEntry) else i["value"]}
@@ -98,9 +98,9 @@ class ElasticsearchConnector:
             "Stored FAIR-DO in elasticsearch index: " + result["pid"], result, response
         )
 
-    def addPIDRecords(self, pidRecords: list[PIDRecord]):
+    async def addPIDRecords(self, pidRecords: list[PIDRecord]):
         for pidRecord in pidRecords:
-            self.addPIDRecord(pidRecord)
+            await self.addPIDRecord(pidRecord)
 
     def searchForPID(self, presumedPID: str) -> str:
         response = self._client.search(

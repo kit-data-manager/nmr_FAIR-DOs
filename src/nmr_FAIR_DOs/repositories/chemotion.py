@@ -69,7 +69,7 @@ class ChemotionRepository(AbstractRepository):
     async def extractPIDRecordFromResource(
         self, url: str, addEntries: Callable[[str, list[PIDRecordEntry]], str]
     ) -> PIDRecord | None:
-        logger.debug(f"Extracting PID record from {url}", addEntries)
+        logger.debug("Extracting PID record from url", url, str(addEntries))
 
         if not url or url == "" or url is None:
             raise ValueError("URL cannot be empty.")
@@ -160,7 +160,7 @@ class ChemotionRepository(AbstractRepository):
         """
         logger.debug("Mapping generic info to PID Record", json["@id"])
 
-        fdo = PIDRecord(json["@id"])
+        fdo = PIDRecord(json["@id"].replace("https://doi.org/", ""))
 
         fdo.addEntry(
             "21.T11148/076759916209e5d62bd5",
@@ -183,7 +183,7 @@ class ChemotionRepository(AbstractRepository):
         )
 
         fdo.addEntry(
-            "21.T11148/b8457812905b83046284", json["@id"], "digitalObjectLocation"
+            "21.T11148/b8457812905b83046284", fdo.getPID(), "digitalObjectLocation"
         )
 
         fdo.addEntry("21.T11969/a00985b98dac27bd32f8", "Dataset", "resourceType")
@@ -261,7 +261,7 @@ class ChemotionRepository(AbstractRepository):
                 "21.T11148/aafd5fb4c7222e2d950a", json["dateCreated"], "dateCreated"
             )
 
-        logger.debug("Mapped generic info to FAIR-DO", json["@id"], fdo)
+        logger.debug("Mapped generic info to FAIR-DO", fdo)
         return fdo
 
     @staticmethod
@@ -406,16 +406,20 @@ class ChemotionRepository(AbstractRepository):
                     ),
                 ]
 
-                datasetPID = addEntries(presumedDatasetID, datasetEntries)
-                if datasetPID is not None:
-                    fdo.addEntry(
-                        "21.T11148/4fe7cde52629b61e3b82", datasetPID, "isMetadataFor"
-                    )
-                else:
+                try:
+                    datasetPID = addEntries(presumedDatasetID, datasetEntries)
+                    if datasetPID is not None:
+                        fdo.addEntry(
+                            "21.T11148/4fe7cde52629b61e3b82",
+                            datasetPID,
+                            "isMetadataFor",
+                        )
+                except Exception as e:
                     logger.error(
                         "Error adding dataset reference to study",
-                        datasetPID,
+                        presumedDatasetID,
                         datasetEntries,
+                        e,
                     )
 
             return fdo

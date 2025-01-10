@@ -98,6 +98,7 @@ def addEntries(presumed_pid: str, entries: list[PIDRecordEntry]) -> str:
             )
             record.addListOfEntries(entries)
             return record.getPID()
+
     try:
         logger.info(
             "Couldn't find a record to add entries to. Calling addEntries function. Starting to search in elasticsearch."
@@ -115,19 +116,22 @@ def addEntries(presumed_pid: str, entries: list[PIDRecordEntry]) -> str:
                 pid_records.append(result)
                 tpm.updatePIDRecord(result)
                 return result.getPID()
-    except Exception as e:
-        logger.error("Error adding entries to PID record", presumed_pid, e)
-        raise Exception("Error adding entries to PID record", presumed_pid, e)
+    except Exception:
+        # logger.error("Error adding entries to PID record ", presumed_pid, e)
+        # raise Exception("Error adding entries to PID record", presumed_pid, e)
+        future_entry = {"presumed_pid": presumed_pid, "entries": entries}
+        logger.info(
+            f"Could not find a PID record locally or in Elasticsearch with PID {presumed_pid}. Reminding entry for future use.",
+            future_entry,
+            pid_records,
+        )
+        future_entries.append(future_entry)
+        raise Exception(
+            "Could not find a PID record in Elasticsearch with PID. Reminding entry for future use.",
+            future_entry,
+        )
 
-    logger.info(
-        f"Could not find a PID record in Elasticsearch with PID {presumed_pid}. Reminding entry for future use.",
-        {"presumed_pid": presumed_pid, "entries": entries},
-    )
-    future_entries.append({"presumed_pid": presumed_pid, "entries": entries})
-    raise Exception(
-        "Could not find a PID record in Elasticsearch with PID. Reminding entry for future use.",
-        {"presumed_pid": presumed_pid, "entries": entries},
-    )
+    return "None"
 
 
 async def create_pidRecords_from_urls(
@@ -177,6 +181,7 @@ async def create_pidRecords_from_urls(
                 }
             )
 
+    logger.info("Dealing with future entries", future_entries)
     # Add entries from future entries to PID records
     visited_pids: list = []
     while len(future_entries) > 0:
@@ -194,17 +199,32 @@ async def create_pidRecords_from_urls(
                 }
             )
         else:
-            visited_pids.append(entry["presumed_pid"])
-            logger.info(
-                f"Adding entries to PID record with PID {entry['presumed_pid']} from future entries.",
-                entry,
-            )
-            addEntries(entry["presumed_pid"], entry["entries"])
+            try:
+                visited_pids.append(entry["presumed_pid"])
+                logger.info(
+                    f"Adding entries to PID record with PID {entry['presumed_pid']} from future entries.",
+                    entry,
+                )
+                addEntries(entry["presumed_pid"], entry["entries"])
+            except Exception as e:
+                logger.error(
+                    f"Error adding entries to PID record with PID {entry['presumed_pid']} from future entries. This was the second and last attempt.",
+                    entry,
+                    e,
+                )
+                errors.append(
+                    {
+                        "url": entry["presumed_pid"],
+                        "error": e.__repr__(),
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
             # raise Exception("Error adding entries to PID record with PID from future entries")
 
-    # Create PID records in TPM and add them to Elasticsearch
+    # Create PID records in TPM
     real_pid_records = []
     try:
+        logger.info("Creating PID records in TPM", local_pid_records)
         real_pid_records = tpm.createMultipleFAIRDOs(
             local_pid_records
         )  # create PID records in TPM
@@ -212,8 +232,10 @@ async def create_pidRecords_from_urls(
         logger.error("Error creating PID records in TPM", local_pid_records, e)
         errors.append({"error": e.__repr__(), "timestamp": datetime.now().isoformat()})
 
+    # Add PID records to Elasticsearch
     try:
-        elasticsearch.addPIDRecords(
+        logger.info("Adding PID records to Elasticsearch", real_pid_records)
+        await elasticsearch.addPIDRecords(
             real_pid_records
         )  # add PID records to Elasticsearch
     except Exception as e:
@@ -228,8 +250,9 @@ async def create_pidRecords_from_urls(
         json.dump(errors, f)
         logger.info("Errors written to file errors.json")
 
+    # write PID records to file
     with open("pid_records_" + repo.repositoryID.replace("/", "_") + ".json", "w") as f:
-        json.dump([record.exportJSON() for record in pid_records], f)
+        json.dump([record.toJSON() for record in pid_records], f)
         logger.info("PID records written to file pid_records.json")
 
     return real_pid_records

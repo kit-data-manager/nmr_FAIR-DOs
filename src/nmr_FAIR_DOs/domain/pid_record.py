@@ -14,8 +14,11 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import logging
 
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
+
+logger = logging.getLogger(__name__)
 
 
 class PIDRecord:
@@ -27,7 +30,7 @@ class PIDRecord:
     _pid: str
     _entries: dict[str, list[PIDRecordEntry]]
 
-    def __init__(self, pid: str, entries: dict | list[PIDRecordEntry] = None):
+    def __init__(self, pid: str, entries: list[PIDRecordEntry] = None):
         """
         Creates a PID record
 
@@ -205,7 +208,7 @@ class PIDRecord:
         else:
             return False
 
-    def exportJSON(self) -> dict:
+    def toJSON(self) -> dict:
         """
         Exports the PID record as JSON object
 
@@ -214,9 +217,9 @@ class PIDRecord:
         entries = {}
 
         for key, value in self._entries.items():
-            entries[key] = [entry.exportJSON() for entry in value]
+            entries[key] = [entry.toJSON() for entry in value]
 
-        return {"pid": self._pid, "entries": self._entries}
+        return {"pid": self._pid, "entries": entries}
 
     def exportSimpleFormatJSON(self) -> dict:
         """
@@ -233,29 +236,48 @@ class PIDRecord:
         return {"pid": self._pid, "record": kv_pairs}
 
     @staticmethod
-    def fromJSON(json: dict) -> "PIDRecord":
+    def fromJSON(input_json: dict) -> "PIDRecord":
         """
         Creates a PID record from a JSON object
 
-        :param json:dict The JSON object to create the PID record from
+        :param input_json:dict The JSON object to create the PID record from
 
         :return:PIDRecord The PID record created from the JSON object
 
         :raises ValueError: If the JSON object is None
         """
-        if json is None:
+        logger.debug("Trying to extract PID record from JSON", input_json)
+
+        if input_json is None:
             raise ValueError("JSON must not be None")
 
-        if "pid" not in json:
+        if "pid" not in input_json:
             raise ValueError("PID must be in JSON object")
 
-        if "entries" not in json:
-            return PIDRecord(json["pid"])
+        if "entries" not in input_json:
+            return PIDRecord(input_json["pid"])
         else:
-            return PIDRecord(json["pid"], json["entries"])
+            entries = []
+
+            for key, value in input_json["entries"].items():
+                for entry in value:
+                    if "name" in entry:
+                        entries.append(
+                            PIDRecordEntry(key, entry["value"], entry["name"])
+                        )
+                    else:
+                        entries.append(PIDRecordEntry(key, entry["value"]))
+
+            logger.debug(
+                "Extracted PID record from JSON", PIDRecord(input_json["pid"], entries)
+            )
+            return PIDRecord(input_json["pid"], entries)
 
     def __str__(self):
         return f"PIDRecord(pid={self._pid}, entries={self._entries})"
 
     def __repr__(self):
-        return str(self.exportJSON())
+        return str(self.toJSON())
+
+    def __dict__(self):
+        return self.toJSON()
