@@ -188,61 +188,149 @@ class ChemotionRepository(AbstractRepository):
 
         fdo.addEntry("21.T11969/a00985b98dac27bd32f8", "Dataset", "resourceType")
 
-        contact = []
-        if json["author"] is list:
-            for author in json["author"]:
-                identifier = None
-                if "identifier" in author:
-                    identifier = author["identifier"]
-                elif "@id" in author:
-                    identifier = author["@id"]
-                if identifier not in contact:
-                    contact.append(identifier)
-        elif json["author"] is dict:
-            identifier = None
-            if "identifier" in json["author"]:
-                identifier = json["author"]["identifier"]
-            elif "@id" in json["author"]:
-                identifier = json["author"]["@id"]
-            if identifier not in contact:
-                contact.append(identifier)
+        def extractContactField(field_name: str, json_object: dict) -> list[str]:
+            """
+            Extracts contacts from a field in a JSON object.
 
-        if "creator" in json:
-            if json["creator"] is list:
-                for creator in json["creator"]:
-                    identifier = None
-                    if "identifier" in creator:
-                        identifier = creator["identifier"]
-                    elif "@id" in creator:
-                        identifier = creator["@id"]
-                    if identifier not in contact:
-                        contact.append(identifier)
-            elif json["creator"] is dict:
-                identifier = None
-                if "identifier" in json["creator"]:
-                    identifier = json["creator"]["identifier"]
-                elif "@id" in json["creator"]:
-                    identifier = json["creator"]["@id"]
-                if identifier not in contact:
-                    contact.append(identifier)
-        if "contributor" in json:
-            if json["contributor"] is list:
-                for contributor in json["contributor"]:
-                    identifier = None
-                    if "identifier" in contributor:
-                        identifier = contributor["identifier"]
-                    elif "@id" in contributor:
-                        identifier = contributor["@id"]
-                    if identifier not in contact:
-                        contact.append(identifier)
-            elif json["contributor"] is dict:
-                identifier = None
-                if "identifier" in json["contributor"]:
-                    identifier = json["contributor"]["identifier"]
-                elif "@id" in json["contributor"]:
-                    identifier = json["contributor"]["@id"]
-                if identifier not in contact:
-                    contact.append(identifier)
+            Args:
+                field_name (str): The name of the field to extract the contacts from.
+                json_object (dict): The JSON object to extract the contacts from.
+
+            Returns:
+                list[str]: A list of contact identifiers extracted from the field.
+            """
+            contacts = []
+
+            def extractContact(contact_element: dict) -> str:
+                """
+                Extracts the identifier of a contact from a contact object.
+
+                Args:
+                    contact_element (dict): The contact JSON object to extract the identifier from.
+
+                Returns:
+                    str: The identifier of the contact
+                """
+                if "identifier" in contact_element:
+                    logger.debug(
+                        f"Found identifier in identifier field {contact_element['identifier']}"
+                    )
+                    return contact_element[
+                        "identifier"
+                    ]  # get the identifier of the contact from the identifier field if it exists
+                elif "@id" in contact_element:
+                    logger.debug(
+                        f"Found identifier in @id field {contact_element['@id']}"
+                    )
+                    return contact_element[
+                        "@id"
+                    ]  # get the identifier of the contact from the @id field if it exists
+                return None
+
+            if field_name in json_object:
+                field = json_object[
+                    field_name
+                ]  # get the field e.g. author, creator, contributor
+
+                if isinstance(field, list):  # if the field is a list of contacts
+                    for element in field:  # iterate over the contacts
+                        logger.debug(
+                            f"Extracting contact from {field_name} out of list", element
+                        )
+                        identifier = extractContact(
+                            element
+                        )  # extract the identifier of the contact
+                        if identifier not in contacts and identifier is not None:
+                            logger.debug(f"Adding contact {identifier} to contacts")
+                            contacts.append(identifier)
+                        else:
+                            logger.debug(
+                                f"Contact {identifier} already in contacts", contacts
+                            )
+
+                elif isinstance(field, dict):  # if the field is a single contact
+                    logger.debug(
+                        f"Extracting contact from {field_name} out of dict", field
+                    )
+                    identifier = extractContact(
+                        field
+                    )  # extract the identifier of the contact
+                    if identifier not in contacts and identifier is not None:
+                        logger.debug(f"Adding contact {identifier} to contacts")
+                        contacts.append(identifier)
+                    else:
+                        logger.debug(
+                            f"Contact {identifier} already in contacts or is None",
+                            contacts,
+                        )
+                else:
+                    logger.debug(f"Field {field_name} is not a list or dict", field)
+            else:
+                logger.debug(f"Field {field_name} not found in json", json_object)
+
+            logger.debug(f"Extracted contacts from {field_name}", contacts)
+            return contacts
+
+        contact = []
+        contact.extend(extractContactField("author", json))
+        contact.extend(extractContactField("creator", json))
+        contact.extend(extractContactField("contributor", json))
+        # if json["author"] is list:
+        #     for author in json["author"]:
+        #         identifier = None
+        #         if "identifier" in author:
+        #             identifier = author["identifier"]
+        #         elif "@id" in author:
+        #             identifier = author["@id"]
+        #         if identifier not in contact:
+        #             contact.append(identifier)
+        # elif json["author"] is dict:
+        #     identifier = None
+        #     if "identifier" in json["author"]:
+        #         identifier = json["author"]["identifier"]
+        #     elif "@id" in json["author"]:
+        #         identifier = json["author"]["@id"]
+        #     if identifier not in contact:
+        #         contact.append(identifier)
+        #
+        # if "creator" in json:
+        #     if json["creator"] is list:
+        #         for creator in json["creator"]:
+        #             identifier = None
+        #             if "identifier" in creator:
+        #                 identifier = creator["identifier"]
+        #             elif "@id" in creator:
+        #                 identifier = creator["@id"]
+        #             if identifier not in contact:
+        #                 contact.append(identifier)
+        #     elif json["creator"] is dict:
+        #         identifier = None
+        #         if "identifier" in json["creator"]:
+        #             identifier = json["creator"]["identifier"]
+        #         elif "@id" in json["creator"]:
+        #             identifier = json["creator"]["@id"]
+        #         if identifier not in contact:
+        #             contact.append(identifier)
+        # if "contributor" in json:
+        #     if json["contributor"] is list:
+        #         for contributor in json["contributor"]:
+        #             identifier = None
+        #             if "identifier" in contributor:
+        #                 identifier = contributor["identifier"]
+        #             elif "@id" in contributor:
+        #                 identifier = contributor["@id"]
+        #             if identifier not in contact:
+        #                 contact.append(identifier)
+        #     elif json["contributor"] is dict:
+        #         identifier = None
+        #         if "identifier" in json["contributor"]:
+        #             identifier = json["contributor"]["identifier"]
+        #         elif "@id" in json["contributor"]:
+        #             identifier = json["contributor"]["@id"]
+        #         if identifier not in contact:
+        #             contact.append(identifier)
+
+        logger.debug("Found contacts", contact)
 
         for contact_id in contact:
             fdo.addEntry(

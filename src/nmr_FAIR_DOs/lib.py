@@ -21,7 +21,6 @@ import os
 from datetime import datetime
 
 from dotenv import load_dotenv
-
 from nmr_FAIR_DOs.connectors.elasticsearch import ElasticsearchConnector
 from nmr_FAIR_DOs.connectors.tpm_connector import TPMConnector
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
@@ -303,12 +302,38 @@ async def recreate_pidRecords_with_errors(repo: AbstractRepository) -> list[PIDR
     try:
         with open("errors_" + repo.repositoryID + ".json", "r") as f:
             errors = json.load(f)  # read errors from the file
-            urls = [
-                error["url"] for error in errors if "url" in error
-            ]  # get URLs from errors
-            return await create_pidRecords_from_urls(
-                repo, urls
-            )  # create PID records for the URLs
+            # urls = [
+            #     for
+            #     error["url"] for error in errors if "url" in error
+            # ]  # get URLs from errors
+
+            urls = []
+            for error in errors:
+                if "url" in error:
+                    if error["url"] in urls:
+                        continue
+                    elif pid_records is not None and any(
+                        pid_record.getPID() == error["url"]
+                        for pid_record in pid_records
+                    ):
+                        continue
+                    elif pid := elasticsearch.searchForPID(error["url"]) is not None:
+                        record = tpm.getPIDRecord(pid)
+                        if record is not None:
+                            pid_records.append(record)
+                            continue
+                        else:
+                            urls.append(error["url"])
+                    else:
+                        urls.append(error["url"])
+            if len(urls) > 0:
+                logger.info(
+                    f"Recreating PID records for the following URLs that caused errors during the last run: {urls}"
+                )
+                record = await create_pidRecords_from_urls(repo, urls)
+                pid_records.extend(record)
+
+            return pid_records
     except Exception as e:
         logger.error(f"Error reading errors.json: {str(e)}")
         return []
