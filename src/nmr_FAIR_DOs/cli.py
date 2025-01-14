@@ -42,29 +42,21 @@ app = typer.Typer()
 app.add_typer(say, name="say")
 
 
-# @app.command()
-# def createAllAvailable(repo: str):
-#     """
-#     Create PID records for all available resources.
-#     """
-#     repository: AbstractRepository = getRepository(repo)
-#     resources = asyncio.run(create_pidRecords_from_scratch(repository))
-#
-#     typer.echo(f"Created PID records for {len(resources)} resources in {repo}.")
-#     typer.echo(f"If errors occurred, please see error_{repository.repositoryID}.json for details. You can retry the creation of PID records for the failed resources by using the 'retryErrors' command.")
-
-
 @app.command()
-def createAllAvailable(repo: str, start: datetime = None, end: datetime = None):
+def createAllAvailable(
+    repo: str, start: datetime = None, end: datetime = None, dryrun: bool = False
+):
     """
     Create PID records for all available resources.
     """
     logger.info(
-        f"Creating PID records for all available resources in {repo} in timerange {start}-{end}."
+        f"Creating PID records for all available resources in {repo} in timerange {start}-{end}. Dryrun: {dryrun}"
     )
 
     repository: AbstractRepository = getRepository(repo)
-    resources = asyncio.run(create_pidRecords_from_scratch(repository, start, end))
+    resources = asyncio.run(
+        create_pidRecords_from_scratch(repository, start, end, dryrun)
+    )
 
     typer.echo(f"Created PID records for {len(resources)} resources in {repo}.")
     typer.echo(

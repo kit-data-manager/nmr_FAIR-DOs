@@ -15,133 +15,25 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-#
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-#
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-#
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-#
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-#
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-#
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-#
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-#
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  You may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
 import asyncio
+import json
 import logging
+import os.path
 from datetime import datetime
 
 import aiohttp
+from nmr_FAIR_DOs.env import CACHE_DIR
 
 logger = logging.getLogger(__name__)
 
 
-async def fetch_data(url: str):
+async def fetch_data(url: str, forceFresh: bool = False):
     """
     Fetches data from the specified URL.
 
     Args:
         url (str): The URL to fetch data from
+        forceFresh (bool): Whether to force fetching fresh data. This tells the function to ignore cached data.
 
     Returns:
         dict: The fetched data
@@ -152,10 +44,22 @@ async def fetch_data(url: str):
     if not url or url is None or not isinstance(url, str):
         raise ValueError("Invalid URL")
 
+    filename = CACHE_DIR + "/" + url.replace("/", "_") + ".json"
+
+    # check if data is cached
+    if os.path.isfile(filename) and not forceFresh:
+        with open(filename, "r") as f:
+            result = json.load(f)
+            if result is not None and isinstance(result, dict):
+                logger.info(f"Using cached data for {url}")
+                return result
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status == 200:
+                    with open(filename, "w") as f:  # save to cache
+                        json.dump(await response.json(), f)
                     return await response.json()
                 else:
                     logger.error(f"Failed to fetch {url}: {response.status}", response)
@@ -169,12 +73,13 @@ async def fetch_data(url: str):
         raise ValueError(str(e), url, datetime.now().isoformat())
 
 
-async def fetch_multiple(urls: list[str]):
+async def fetch_multiple(urls: list[str], forceFresh: bool = False):
     """
     Fetches data from multiple URLs.
 
     Args:
         urls (List[str]): A list of URLs to fetch data from
+        forceFresh (bool): Whether to force fetching fresh data. This tells the function to ignore cached data.
 
     Returns:
         List[dict]: A list of fetched data
@@ -188,6 +93,6 @@ async def fetch_multiple(urls: list[str]):
     async with aiohttp.ClientSession():
         tasks = []
         for url in urls:
-            tasks.append(asyncio.create_task(fetch_data(url)))
+            tasks.append(asyncio.create_task(fetch_data(url, forceFresh)))
         results = await asyncio.gather(*tasks)
         return results

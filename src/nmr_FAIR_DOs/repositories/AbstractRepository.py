@@ -118,31 +118,6 @@ class AbstractRepository(ABC):
         pid_records = []
         errors = []
 
-        # def localAddEntries(presumed_pid: str, entries: list[PIDRecordEntry]) -> str:
-        #     """
-        #     Adds entries to an existing record with the specified PID.
-        #     This only applies to records that have already been extracted from the resources.
-        #
-        #     Args:
-        #         presumed_pid (str): The presumed PID of the target record
-        #         entries (list[PIDRecordEntry]): A list of entries to add to the target record
-        #
-        #     Returns:
-        #         str: The PID of the target record
-        #     """
-        #     for record in pid_records:
-        #         if record.getPID() == presumed_pid: # PID of the record matches the presumed PID
-        #             logger.debug(f"Adding entries to existing record with PID {presumed_pid}. Identified by PID.", entries)
-        #             record.addListOfEntries(entries)
-        #             return presumed_pid
-        #         elif record.entryExists("21.T11148/b8457812905b83046284", presumed_pid): # Value of digitalObjectLocation matches the presumed PID
-        #             logger.debug(f"Adding entries to existing record with PID {presumed_pid}. Identified by digitalObjectLocation.", entries)
-        #             record.addListOfEntries(entries)
-        #             return record.getPID()
-        #
-        #     logger.info("Couldn't find a record to add entries to. Calling addEntries function.")
-        #     return addEntries(presumed_pid, entries)
-
         for url in urls:
             try:
                 # pid_record = await self.extractPIDRecordFromResource(url, localAddEntries)

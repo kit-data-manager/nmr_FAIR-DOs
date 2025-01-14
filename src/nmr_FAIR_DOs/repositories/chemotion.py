@@ -39,7 +39,7 @@ class ChemotionRepository(AbstractRepository):
 
         Args:
             baseURL (str): The base URL of the Chemotion repository. E.g. "https://chemotion-repository.net".
-            Limit (int): The number of records to fetch in one request. Default is 500.
+            limit (int): The number of records to fetch in one request. Default is 500.
 
         """
         if not baseURL or baseURL == "":
@@ -124,7 +124,7 @@ class ChemotionRepository(AbstractRepository):
             logger.debug("Getting frame " + url)
 
             # Fetch the data
-            response = await fetch_data(url)
+            response = await fetch_data(url, True)
             if (
                 not response
                 or response is None
@@ -186,8 +186,6 @@ class ChemotionRepository(AbstractRepository):
             "21.T11148/b8457812905b83046284", fdo.getPID(), "digitalObjectLocation"
         )
 
-        fdo.addEntry("21.T11969/a00985b98dac27bd32f8", "Dataset", "resourceType")
-
         def extractContactField(field_name: str, json_object: dict) -> list[str]:
             """
             Extracts contacts from a field in a JSON object.
@@ -201,7 +199,7 @@ class ChemotionRepository(AbstractRepository):
             """
             contacts = []
 
-            def extractContact(contact_element: dict) -> str:
+            def extractContact(contact_element: dict) -> str | None:
                 """
                 Extracts the identifier of a contact from a contact object.
 
@@ -275,60 +273,6 @@ class ChemotionRepository(AbstractRepository):
         contact.extend(extractContactField("author", json))
         contact.extend(extractContactField("creator", json))
         contact.extend(extractContactField("contributor", json))
-        # if json["author"] is list:
-        #     for author in json["author"]:
-        #         identifier = None
-        #         if "identifier" in author:
-        #             identifier = author["identifier"]
-        #         elif "@id" in author:
-        #             identifier = author["@id"]
-        #         if identifier not in contact:
-        #             contact.append(identifier)
-        # elif json["author"] is dict:
-        #     identifier = None
-        #     if "identifier" in json["author"]:
-        #         identifier = json["author"]["identifier"]
-        #     elif "@id" in json["author"]:
-        #         identifier = json["author"]["@id"]
-        #     if identifier not in contact:
-        #         contact.append(identifier)
-        #
-        # if "creator" in json:
-        #     if json["creator"] is list:
-        #         for creator in json["creator"]:
-        #             identifier = None
-        #             if "identifier" in creator:
-        #                 identifier = creator["identifier"]
-        #             elif "@id" in creator:
-        #                 identifier = creator["@id"]
-        #             if identifier not in contact:
-        #                 contact.append(identifier)
-        #     elif json["creator"] is dict:
-        #         identifier = None
-        #         if "identifier" in json["creator"]:
-        #             identifier = json["creator"]["identifier"]
-        #         elif "@id" in json["creator"]:
-        #             identifier = json["creator"]["@id"]
-        #         if identifier not in contact:
-        #             contact.append(identifier)
-        # if "contributor" in json:
-        #     if json["contributor"] is list:
-        #         for contributor in json["contributor"]:
-        #             identifier = None
-        #             if "identifier" in contributor:
-        #                 identifier = contributor["identifier"]
-        #             elif "@id" in contributor:
-        #                 identifier = contributor["@id"]
-        #             if identifier not in contact:
-        #                 contact.append(identifier)
-        #     elif json["contributor"] is dict:
-        #         identifier = None
-        #         if "identifier" in json["contributor"]:
-        #             identifier = json["contributor"]["identifier"]
-        #         elif "@id" in json["contributor"]:
-        #             identifier = json["contributor"]["@id"]
-        #         if identifier not in contact:
-        #             contact.append(identifier)
 
         logger.debug("Found contacts", contact)
 
@@ -375,6 +319,10 @@ class ChemotionRepository(AbstractRepository):
         try:
             fdo = ChemotionRepository._mapGenericInfo2PIDRecord(dataset)
 
+            fdo.addEntry(
+                "21.T11969/a00985b98dac27bd32f8", "Dataset", "resourceType"
+            )  # TODO: assign PID to resourceType
+
             fdo.addEntry("21.T11148/6ae999552a0d2dca14d6", dataset["name"], "name")
 
             fdo.addEntry(
@@ -398,7 +346,7 @@ class ChemotionRepository(AbstractRepository):
             # entries.append({
             #     "key": "21.T11969/d15381199a44a16dc88d",
             #     "name": "characterizedCompound",
-            #     "value": dataset["about"][0]["hasBioChemEntityPart"]["molecularWeight"]["value"]
+            #     "value": dataset["isPartOf"][0]["about"][0]["hasBioChemEntityPart"]["molecularWeight"]["value"]
             # }
 
             fdo.addEntry(
@@ -439,20 +387,8 @@ class ChemotionRepository(AbstractRepository):
             fdo = ChemotionRepository._mapGenericInfo2PIDRecord(study)
 
             fdo.addEntry(
-                "21.T11148/7fdada5846281ef5d461",
-                study["about"][0]["image"],
-                "locationPreview",
-            )
-
-            fdo.addEntry(
-                "21.T11148/6ae999552a0d2dca14d6", study["about"][0]["name"], "name"
-            )
-
-            fdo.addEntry(
-                "21.T11148/8710d753ad10f371189b",
-                study["about"][0]["url"],
-                "landingPageLocation",
-            )
+                "21.T11969/a00985b98dac27bd32f8", "Study", "resourceType"
+            )  # TODO: assign PID to resourceType
 
             fdo.addEntry(
                 "21.T11148/2f314c8fe5fb6a0063a8",
@@ -461,54 +397,76 @@ class ChemotionRepository(AbstractRepository):
             )
 
             fdo.addEntry(
-                "21.T11969/d15381199a44a16dc88d",
-                study["about"][0]["hasBioChemEntityPart"]["molecularWeight"]["value"],
-                "characterizedCompound",
-            )
-
-            fdo.addEntry(
-                "21.T11148/f3f0cbaa39fa9966b279",
-                study["about"][0]["identifier"],
-                "identifier",
-            )
-
-            fdo.addEntry(
                 "21.T11148/82e2503c49209e987740",
-                "TODO",  # TODO: get the correct checksum
+                "TODO",  # TODO: get a correct checksum
                 "checksum",
             )
 
-            for dataset in study["about"][0]["subjectOf"]:
-                presumedDatasetID = dataset["@id"]
+            if (
+                "about" not in study
+                or not isinstance(study["about"], list)
+                or len(study["about"]) == 0
+            ):
+                raise ValueError("Study does not contain any datasets", study)
 
-                datasetEntries = [
-                    PIDRecordEntry(
-                        "21.T11148/d0773859091aeb451528", fdo.getPID(), "hasMetadata"
-                    ),
-                    PIDRecordEntry(
-                        "21.T11969/d15381199a44a16dc88d",
-                        study["about"][0]["hasBioChemEntityPart"]["molecularWeight"][
-                            "value"
-                        ],
-                        "characterizedCompound",
-                    ),
-                ]
-
-                try:
-                    datasetPID = addEntries(presumedDatasetID, datasetEntries)
-                    if datasetPID is not None:
-                        fdo.addEntry(
-                            "21.T11148/4fe7cde52629b61e3b82",
-                            datasetPID,
-                            "isMetadataFor",
-                        )
-                except Exception as e:
-                    logger.error(
-                        "Error adding dataset reference to study",
-                        presumedDatasetID,
-                        datasetEntries,
-                        e,
+            for entry in study["about"]:
+                if "image" in entry:
+                    fdo.addEntry(
+                        "21.T11148/7fdada5846281ef5d461",
+                        entry["image"],
+                        "locationPreview",
                     )
+
+                if "hasBioChemEntityPart" in entry:
+                    fdo.addEntry(
+                        "21.T11969/d15381199a44a16dc88d",
+                        entry["hasBioChemEntityPart"]["molecularWeight"]["value"],
+                        "characterizedCompound",
+                    )
+                if "name" in entry:
+                    fdo.addEntry(
+                        "21.T11148/6ae999552a0d2dca14d6", entry["name"], "name"
+                    )
+                if "url" in entry:
+                    fdo.addEntry(
+                        "21.T11148/8710d753ad10f371189b",
+                        entry["url"],
+                        "landingPageLocation",
+                    )
+                if "identifier" in entry:
+                    fdo.addEntry(
+                        "21.T11148/f3f0cbaa39fa9966b279",
+                        entry["identifier"],
+                        "identifier",
+                    )
+
+                if "subjectOf" in entry:
+                    for dataset in study["about"][0]["subjectOf"]:
+                        presumedDatasetID = dataset["@id"]
+
+                        datasetEntries = [
+                            PIDRecordEntry(
+                                "21.T11148/d0773859091aeb451528",
+                                fdo.getPID(),
+                                "hasMetadata",
+                            ),
+                        ]
+
+                        try:
+                            datasetPID = addEntries(presumedDatasetID, datasetEntries)
+                            if datasetPID is not None:
+                                fdo.addEntry(
+                                    "21.T11148/4fe7cde52629b61e3b82",
+                                    datasetPID,
+                                    "isMetadataFor",
+                                )
+                        except Exception as e:
+                            logger.error(
+                                "Error adding dataset reference to study",
+                                presumedDatasetID,
+                                datasetEntries,
+                                e,
+                            )
 
             return fdo
         except Exception as e:

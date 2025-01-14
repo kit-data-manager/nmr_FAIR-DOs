@@ -17,26 +17,23 @@
 
 import json
 import logging
-import os
 from datetime import datetime
 
-from dotenv import load_dotenv
 from nmr_FAIR_DOs.connectors.elasticsearch import ElasticsearchConnector
 from nmr_FAIR_DOs.connectors.tpm_connector import TPMConnector
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
+from nmr_FAIR_DOs.env import (
+    TPM_URL,
+    CHEMOTION_BASE_URL,
+    ELASTICSEARCH_URL,
+    ELASTICSEARCH_APIKEY,
+    ELASTICSEARCH_INDEX,
+)
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
 from nmr_FAIR_DOs.repositories.chemotion import ChemotionRepository
 
 logger = logging.getLogger(__name__)
-
-load_dotenv()
-
-TPM_URL = os.getenv("TPM_URL")
-CHEMOTION_BASE_URL = os.getenv("CHEMOTION_BASE_URL")
-ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
-ELASTICSEARCH_INDEX = os.getenv("ELASTICSEARCH_INDEX")
-ELASTICSEARCH_APIKEY = os.getenv("ELASTICSEARCH_APIKEY")
 
 tpm = TPMConnector(TPM_URL)
 chemotion_repo = ChemotionRepository(CHEMOTION_BASE_URL)
@@ -134,7 +131,7 @@ def addEntries(presumed_pid: str, entries: list[PIDRecordEntry]) -> str:
 
 
 async def create_pidRecords_from_urls(
-    repo: AbstractRepository, urls: list[str]
+    repo: AbstractRepository, urls: list[str], dryrun: bool = False
 ) -> list[PIDRecord]:
     """
     Create PID records for the given URLs.
@@ -142,6 +139,7 @@ async def create_pidRecords_from_urls(
     Args:
         repo (AbstractRepository): The repository to get the resources from
         urls (list[str]): The URLs to create PID records for
+        dryrun (bool): If true, the PID records will not be created in TPM or Elasticsearch
 
     Returns:
         list[PIDRecord]: A list of PID records created from the URLs
@@ -220,29 +218,41 @@ async def create_pidRecords_from_urls(
                 )
             # raise Exception("Error adding entries to PID record with PID from future entries")
 
-    # Create PID records in TPM
-    real_pid_records = []
-    try:
-        logger.info("Creating PID records in TPM", local_pid_records)
-        real_pid_records = tpm.createMultipleFAIRDOs(
-            local_pid_records
-        )  # create PID records in TPM
-    except Exception as e:
-        logger.error("Error creating PID records in TPM", local_pid_records, e)
-        errors.append({"error": e.__repr__(), "timestamp": datetime.now().isoformat()})
+    if not dryrun:
+        # Create PID records in TPM
+        real_pid_records = []
+        try:
+            logger.info("Creating PID records in TPM", local_pid_records)
+            real_pid_records = tpm.createMultipleFAIRDOs(
+                local_pid_records
+            )  # create PID records in TPM
+        except Exception as e:
+            logger.error("Error creating PID records in TPM", local_pid_records, e)
+            errors.append(
+                {"error": e.__repr__(), "timestamp": datetime.now().isoformat()}
+            )
 
-    # Add PID records to Elasticsearch
-    try:
-        logger.info("Adding PID records to Elasticsearch", real_pid_records)
-        await elasticsearch.addPIDRecords(
+        # Add PID records to Elasticsearch
+        try:
+            logger.info("Adding PID records to Elasticsearch", real_pid_records)
+            await elasticsearch.addPIDRecords(
+                real_pid_records
+            )  # add PID records to Elasticsearch
+        except Exception as e:
+            logger.error(f"Error adding PID records to Elasticsearch: {str(e)}")
+            errors.append(
+                {"error": e.__repr__(), "timestamp": datetime.now().isoformat()}
+            )
+
+        logger.debug("PID records created:", real_pid_records)
+        pid_records.extend(
             real_pid_records
-        )  # add PID records to Elasticsearch
-    except Exception as e:
-        logger.error(f"Error adding PID records to Elasticsearch: {str(e)}")
-        errors.append({"error": e.__repr__(), "timestamp": datetime.now().isoformat()})
-
-    logger.debug("PID records created:", real_pid_records)
-    pid_records.extend(real_pid_records)  # add PID records to the list of PID records
+        )  # add PID records to the list of PID records
+    else:
+        logger.warning("Dryrun: Not creating PID records in TPM or Elasticsearch")
+        pid_records.extend(
+            local_pid_records
+        )  # add PID records to the list of PID records
 
     # write errors to file
     with open("errors_" + repo.repositoryID.replace("/", "_") + ".json", "w") as f:
@@ -258,7 +268,10 @@ async def create_pidRecords_from_urls(
 
 
 async def create_pidRecords_from_scratch(
-    repo: AbstractRepository, start: datetime = None, end: datetime = None
+    repo: AbstractRepository,
+    start: datetime = None,
+    end: datetime = None,
+    dryrun: bool = False,
 ) -> list[PIDRecord]:
     """
     Create PID records from scratch for the given time frame.
@@ -267,6 +280,7 @@ async def create_pidRecords_from_scratch(
         repo (AbstractRepository): The repository to get the resources from
         start (datetime): The start of the time frame
         end (datetime): The end of the time frame
+        dryrun (bool): If true, the PID records will not be created in TPM or Elasticsearch
 
     Returns:
         list[PIDRecord]: A list of PID records created from scratch
@@ -285,11 +299,15 @@ async def create_pidRecords_from_scratch(
     ):
         urls = await repo.listURLsForTimeFrame(start, end)
     else:
+        with open(
+            "last_run_" + repo.repositoryID.replace("/", "_") + ".json", "w"
+        ) as f:
+            f.write(datetime.now().isoformat())
         urls = await repo.listAvailableURLs()
 
     logger.info("Creating PID records from scratch for the following URLs:", urls)
 
-    return await create_pidRecords_from_urls(repo, urls)
+    return await create_pidRecords_from_urls(repo, urls, dryrun)
 
 
 async def recreate_pidRecords_with_errors(repo: AbstractRepository) -> list[PIDRecord]:
