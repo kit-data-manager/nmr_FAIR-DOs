@@ -92,17 +92,17 @@ class TPMConnector:
             raise ValueError("No content to create due to invalid input")
 
         logger.debug(
-            f"Creating FAIR-DOs at {self._tpm_url + endpoint}", json.dumps(content)
+            f"Creating FAIR-DOs at {self._tpm_url + endpoint}",
+            json.dumps(content)[:250],
         )
         resource_response = requests.post(
-            self._tpm_url + endpoint, headers=headers, json=content
+            self._tpm_url + endpoint, headers=headers, json=content, timeout=None
         )
 
         if resource_response.status_code != 201:
             raise Exception(
                 "Error creating PID records. API response from TPM: ",
                 repr(resource_response),
-                resource_response.request,
             )
 
         result = []

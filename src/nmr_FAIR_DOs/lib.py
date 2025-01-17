@@ -32,11 +32,13 @@ from nmr_FAIR_DOs.env import (
 )
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
 from nmr_FAIR_DOs.repositories.chemotion import ChemotionRepository
+from nmr_FAIR_DOs.repositories.nmrxiv import NMRXiv_Repository
 
 logger = logging.getLogger(__name__)
 
 tpm = TPMConnector(TPM_URL)
 chemotion_repo = ChemotionRepository(CHEMOTION_BASE_URL)
+nmrxiv_repo = NMRXiv_Repository()
 elasticsearch = ElasticsearchConnector(
     ELASTICSEARCH_URL, ELASTICSEARCH_APIKEY, ELASTICSEARCH_INDEX
 )
@@ -57,6 +59,8 @@ def getRepository(repo: str) -> AbstractRepository:
     """
     if repo == "chemotion":
         return chemotion_repo
+    elif repo == "nmrxiv":
+        return
     else:
         raise ValueError("Repository not found", repo)
 
@@ -147,6 +151,7 @@ async def create_pidRecords_from_urls(
     Raises:
         Exception: If an error occurs during the creation of the PID records
     """
+    start_time = datetime.now()
     local_pid_records = []
     errors: list[dict] = []
 
@@ -157,7 +162,7 @@ async def create_pidRecords_from_urls(
         logger.info(f"Extracting PID record from {url}")
         try:
             pid_record = await repo.extractPIDRecordFromResource(url, addEntries)
-            if pid_record is not None:
+            if pid_record is not None and isinstance(pid_record, PIDRecord):
                 local_pid_records.append(pid_record)
             else:
                 logger.error(f"No PID record extracted from {url}")
@@ -218,23 +223,58 @@ async def create_pidRecords_from_urls(
                 )
             # raise Exception("Error adding entries to PID record with PID from future entries")
 
+    logger.info("Fixing duplicate PIDs")  # Fix duplicate PIDs
+    local_pid_records = _deduplicateListOfPIDRecords(local_pid_records)
+    # deduplicated_pid_records: dict[str, PIDRecord] = {}
+    # for record in local_pid_records:
+    #     if record.getPID() in deduplicated_pid_records:
+    #         deduplicated_pid_records[record.getPID()].merge(record)
+    #     else:
+    #         deduplicated_pid_records[record.getPID()] = record
+    # local_pid_records = list(deduplicated_pid_records.values())
+    # duplicates = {}
+    # for record in local_pid_records:
+    #     if record.getPID() in [record.getPID() for record in local_pid_records]:
+    #         # if record.getPID() == any(record.getPID() in local_pid_records):
+    #         logger.debug(f"Found duplicate PID {record.getPID()}", record)
+    #         if record.getPID() in duplicates:
+    #             duplicates[record.getPID()].append(record)
+    #         else:
+    #             duplicates[record.getPID()] = [record]
+    #         local_pid_records.remove(record)
+    # for key, value in duplicates.items():
+    #     logger.debug(f"Merging {len(value)} records with PID {key}", value)
+    #     # merge all values with the .merge method
+    #     merged = value[0]
+    #     for record in value[1:]:
+    #         merged.merge(record)
+    #
+    #     logger.debug(f"Adding merged record with PID {key} to local_pid_records", merged)
+    #     local_pid_records.append(merged)
+
+    with open(
+        "local_pid_records_" + repo.repositoryID.replace("/", "_") + ".json", "w"
+    ) as f:
+        json.dump([record.toJSON() for record in local_pid_records], f)
+        logger.info("PID records written to file local_pid_records.json")
+
     if not dryrun:
         # Create PID records in TPM
         real_pid_records = []
         try:
-            logger.info("Creating PID records in TPM", local_pid_records)
+            logger.info("Creating PID records in TPM")
             real_pid_records = tpm.createMultipleFAIRDOs(
                 local_pid_records
             )  # create PID records in TPM
         except Exception as e:
-            logger.error("Error creating PID records in TPM", local_pid_records, e)
+            logger.error("Error creating PID records in TPM")
             errors.append(
                 {"error": e.__repr__(), "timestamp": datetime.now().isoformat()}
             )
 
         # Add PID records to Elasticsearch
         try:
-            logger.info("Adding PID records to Elasticsearch", real_pid_records)
+            logger.info("Adding PID records to Elasticsearch")
             await elasticsearch.addPIDRecords(
                 real_pid_records
             )  # add PID records to Elasticsearch
@@ -244,7 +284,7 @@ async def create_pidRecords_from_urls(
                 {"error": e.__repr__(), "timestamp": datetime.now().isoformat()}
             )
 
-        logger.debug("PID records created:", real_pid_records)
+        logger.debug("PID records created")
         pid_records.extend(
             real_pid_records
         )  # add PID records to the list of PID records
@@ -264,6 +304,9 @@ async def create_pidRecords_from_urls(
         json.dump([record.toJSON() for record in pid_records], f)
         logger.info("PID records written to file pid_records.json")
 
+    logger.info(
+        f"Finished creating PID records for {len(urls)} URLs in {datetime.now() - start_time}"
+    )
     return real_pid_records
 
 
@@ -355,3 +398,23 @@ async def recreate_pidRecords_with_errors(repo: AbstractRepository) -> list[PIDR
     except Exception as e:
         logger.error(f"Error reading errors.json: {str(e)}")
         return []
+
+
+def _deduplicateListOfPIDRecords(input: list[PIDRecord]) -> list[PIDRecord]:
+    """
+    Deduplicate a list of PID records
+
+    Args:
+        input (list[PIDRecord]): The list of PID records to deduplicate
+
+    Returns:
+        list[PIDRecord]: The deduplicated list of PID records
+    """
+    deduplicated_pid_records: dict[str, PIDRecord] = {}
+    for record in input:
+        if record.getPID() in deduplicated_pid_records:
+            logger.debug(f"Found duplicate PID {record.getPID()}", record)
+            deduplicated_pid_records[record.getPID()].merge(record)
+        else:
+            deduplicated_pid_records[record.getPID()] = record
+    return list(deduplicated_pid_records.values())

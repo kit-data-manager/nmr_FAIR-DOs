@@ -22,6 +22,7 @@ load_dotenv()
 
 TPM_URL = os.getenv("TPM_URL")
 CHEMOTION_BASE_URL = os.getenv("CHEMOTION_BASE_URL")
+NMRXIV_BASE_URL = os.getenv("NMRXIV_BASE_URL")
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
 ELASTICSEARCH_INDEX = os.getenv("ELASTICSEARCH_INDEX")
 ELASTICSEARCH_APIKEY = os.getenv("ELASTICSEARCH_APIKEY")
@@ -32,6 +33,8 @@ if not TPM_URL:
     raise Exception("TPM_URL is not set")
 if not CHEMOTION_BASE_URL:
     raise Exception("CHEMOTION_BASE_URL is not set")
+if not NMRXIV_BASE_URL:
+    raise Exception("NMRXIV_BASE_URL is not set")
 if not ELASTICSEARCH_URL:
     raise Exception("ELASTICSEARCH_URL is not set")
 if not ELASTICSEARCH_INDEX:

@@ -14,7 +14,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 import logging
 from datetime import datetime
 from string import Template
@@ -23,7 +22,7 @@ from typing import Callable
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
-from nmr_FAIR_DOs.utils import fetch_data
+from nmr_FAIR_DOs.utils import fetch_data, encodeInBase64
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -33,7 +32,7 @@ logger = logging.getLogger(__name__)
 class ChemotionRepository(AbstractRepository):
     _baseURL: str
 
-    def __init__(self, baseURL: str, limit: int = 500):
+    def __init__(self, baseURL: str, limit: int = 1000):
         """
         Constructor for the ChemotionRepository class.
 
@@ -87,6 +86,12 @@ class ChemotionRepository(AbstractRepository):
             raise ValueError("Invalid response from Chemotion repository.")
 
     async def _getAllURLs(self, start: datetime, end: datetime):
+        urls = []
+        urls.extend(await self._getURLsForCategory("Container", start, end))
+        urls.extend(await self._getURLsForCategory("Sample", start, end))
+        return urls
+
+    async def _getURLsForCategory(self, category: str, start: datetime, end: datetime):
         if (
             not start
             or not end
@@ -105,8 +110,13 @@ class ChemotionRepository(AbstractRepository):
         if start > datetime.now():
             raise ValueError("Start date must be in the past.")
 
+        if not category or category == "" or category not in ["Sample", "Container"]:
+            raise ValueError(
+                "Category cannot be empty and must be either 'Sample' or 'Container' ."
+            )
+
         url_template = Template(
-            "$repositoryURL/api/v1/public/metadata/publications?type=Sample&offset=$offset&limit=$limit&date_from=$dateFrom&date_to=$dateTo"
+            "$repositoryURL/api/v1/public/metadata/publications?type=$category&offset=$offset&limit=$limit&date_from=$dateFrom&date_to=$dateTo"
         )
         offset = 0
         complete = False
@@ -118,6 +128,7 @@ class ChemotionRepository(AbstractRepository):
                 repositoryURL=self._baseURL,
                 offset=offset,
                 limit=self._limit,
+                category=category,
                 dateFrom=f"{start.year}-{start.month}-{start.day}",
                 dateTo=f"{end.year}-{end.month}-{end.day}",
             )
@@ -160,7 +171,7 @@ class ChemotionRepository(AbstractRepository):
         """
         logger.debug("Mapping generic info to PID Record", json["@id"])
 
-        fdo = PIDRecord(json["@id"].replace("https://doi.org/", ""))
+        fdo = PIDRecord(encodeInBase64(json["@id"].replace("https://doi.org/", "")))
 
         fdo.addEntry(
             "21.T11148/076759916209e5d62bd5",
@@ -183,7 +194,9 @@ class ChemotionRepository(AbstractRepository):
         )
 
         fdo.addEntry(
-            "21.T11148/b8457812905b83046284", fdo.getPID(), "digitalObjectLocation"
+            "21.T11148/b8457812905b83046284",
+            json["@id"].replace("https://doi.org/", ""),
+            "digitalObjectLocation",
         )
 
         def extractContactField(field_name: str, json_object: dict) -> list[str]:
@@ -442,7 +455,9 @@ class ChemotionRepository(AbstractRepository):
 
                 if "subjectOf" in entry:
                     for dataset in study["about"][0]["subjectOf"]:
-                        presumedDatasetID = dataset["@id"]
+                        presumedDatasetID = encodeInBase64(
+                            dataset["@id"].replace("https://doi.org/", "")
+                        )
 
                         datasetEntries = [
                             PIDRecordEntry(

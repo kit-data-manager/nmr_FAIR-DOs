@@ -14,7 +14,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import base64
 import asyncio
 import json
 import logging
@@ -96,3 +96,23 @@ async def fetch_multiple(urls: list[str], forceFresh: bool = False):
             tasks.append(asyncio.create_task(fetch_data(url, forceFresh)))
         results = await asyncio.gather(*tasks)
         return results
+
+
+def encodeInBase64(data: str) -> str:
+    """
+    Encodes the given data in Base64.
+
+    Args:
+        data (str): The data to encode
+
+    Returns:
+        str: The Base64 encoded data
+
+    Raises:
+        ValueError: If the data is None or empty
+    """
+    if data is None or len(data) == 0:
+        raise ValueError("Data must not be None or empty")
+
+    result = base64.b64encode(bytes(data, "utf-8")).decode("utf-8")
+    return result

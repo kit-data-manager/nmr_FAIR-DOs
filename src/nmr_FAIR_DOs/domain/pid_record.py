@@ -273,6 +273,29 @@ class PIDRecord:
             )
             return PIDRecord(input_json["pid"], entries)
 
+    def merge(self, other: "PIDRecord") -> "PIDRecord":
+        """
+        Merges the PID record with another PID record
+
+        :param other:PIDRecord The PID record to merge with
+
+        :return:PIDRecord The merged PID record
+
+        :raises ValueError: If the other PID record is None
+        """
+        if other is None:
+            raise ValueError("Other PID record must not be None")
+
+        if self._pid != other.getPID():
+            raise ValueError("PID of both PID records must be the same")
+
+        for key, value in other.getEntries().items():
+            for entry in value:
+                if not self.entryExists(key, entry.value):
+                    self.addPIDRecordEntry(entry)
+
+        return self
+
     def __str__(self):
         return f"PIDRecord(pid={self._pid}, entries={self._entries})"
 
