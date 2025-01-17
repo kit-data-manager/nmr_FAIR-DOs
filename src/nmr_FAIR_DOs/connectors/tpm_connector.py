@@ -16,10 +16,11 @@
 #  limitations under the License.
 import json
 import logging
+from string import Template
 
 import requests
-
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
+from nmr_FAIR_DOs.utils import fetch_multiple
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -49,7 +50,7 @@ class TPMConnector:
 
         content = pidRecord.toJSON()
 
-        endpoint = "api/v1/pit/pid"
+        endpoint = "/api/v1/pit/pid"
 
         if content is None or len(content) == 0:
             raise ValueError("No content to create due to invalid input")
@@ -86,7 +87,7 @@ class TPMConnector:
 
             content.append(fairdo.toJSON())
 
-        endpoint = "api/v1/pit/pids"
+        endpoint = "/api/v1/pit/pids"
 
         if content is None or len(content) == 0:
             raise ValueError("No content to create due to invalid input")
@@ -129,7 +130,7 @@ class TPMConnector:
         if pid is None or len(pid) == 0:
             raise ValueError("PID must not be None or empty")
 
-        endpoint = "api/v1/pit/pid/" + pid
+        endpoint = "/api/v1/pit/pid/" + pid
 
         resource_response = requests.get(
             self._tpm_url + endpoint, headers={"Accept": "application/json"}
@@ -157,7 +158,7 @@ class TPMConnector:
 
         content = pidRecord.toJSON()
 
-        endpoint = "api/v1/pit/pid/" + pidRecord.getPID()
+        endpoint = "/api/v1/pit/pid/" + pidRecord.getPID()
 
         if content is None or len(content) == 0:
             raise ValueError("No content to update due to invalid input")
@@ -173,3 +174,37 @@ class TPMConnector:
             )
 
         return PIDRecord.fromJSON(resource_response.json())
+
+    async def getAllPIDRecords(self) -> list[PIDRecord]:
+        """
+        Retrieves all PID records from the TPM
+
+        :return:list[PIDRecord] The list of all PID records
+        """
+        endpoint = "/api/v1/pit/known-pid"
+
+        resource_response = requests.get(
+            self._tpm_url + endpoint, headers={"Accept": "application/json"}
+        )
+
+        if resource_response.status_code != 200:
+            raise Exception("Error retrieving PID records: ", resource_response)
+
+        url_template = Template("$tpmURL/api/v1/pit/pid/$pid")
+
+        single_pidRecord_urls = []
+        for i in resource_response.json():
+            # Create the URL
+            url = url_template.safe_substitute(
+                tpmURL=self._tpm_url,
+                pid=i["pid"],
+            )
+            single_pidRecord_urls.append(url)
+
+        json_records = await fetch_multiple(single_pidRecord_urls, True)
+
+        result = []
+        for i in json_records:
+            result.append(PIDRecord.fromJSON(i))
+
+        return result

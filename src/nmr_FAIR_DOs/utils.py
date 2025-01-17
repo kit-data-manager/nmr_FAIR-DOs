@@ -90,11 +90,13 @@ async def fetch_multiple(urls: list[str], forceFresh: bool = False):
     if not urls or urls is None or not isinstance(urls, list):
         raise ValueError("Invalid URLs. Please provide a list of URLs.")
 
-    async with aiohttp.ClientSession():
-        tasks = []
-        for url in urls:
-            tasks.append(asyncio.create_task(fetch_data(url, forceFresh)))
-        results = await asyncio.gather(*tasks)
+    connector = aiohttp.TCPConnector(limit=100)
+    async with aiohttp.ClientSession(connector=connector):
+        results = []
+        for i in range(0, len(urls), 100):
+            batch = urls[i : i + 100]
+            tasks = [asyncio.create_task(fetch_data(url, forceFresh)) for url in batch]
+            results.extend(await asyncio.gather(*tasks))
         return results
 
 

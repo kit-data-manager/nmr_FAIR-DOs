@@ -261,6 +261,9 @@ class PIDRecord:
 
             for key, value in input_json["entries"].items():
                 for entry in value:
+                    if "value" not in entry or "key" not in entry:
+                        # Skip this entry if it does not contain a key or value
+                        continue
                     if "name" in entry:
                         entries.append(
                             PIDRecordEntry(key, entry["value"], entry["name"])

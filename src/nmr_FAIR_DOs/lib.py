@@ -26,6 +26,7 @@ from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
 from nmr_FAIR_DOs.env import (
     TPM_URL,
     CHEMOTION_BASE_URL,
+    NMRXIV_BASE_URL,
     ELASTICSEARCH_URL,
     ELASTICSEARCH_APIKEY,
     ELASTICSEARCH_INDEX,
@@ -38,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 tpm = TPMConnector(TPM_URL)
 chemotion_repo = ChemotionRepository(CHEMOTION_BASE_URL)
-nmrxiv_repo = NMRXiv_Repository()
+nmrxiv_repo = NMRXiv_Repository(NMRXIV_BASE_URL)
 elasticsearch = ElasticsearchConnector(
     ELASTICSEARCH_URL, ELASTICSEARCH_APIKEY, ELASTICSEARCH_INDEX
 )
@@ -271,6 +272,10 @@ async def create_pidRecords_from_urls(
             errors.append(
                 {"error": e.__repr__(), "timestamp": datetime.now().isoformat()}
             )
+        logger.debug("PID records created")
+        pid_records.extend(
+            real_pid_records
+        )  # add PID records to the list of PID records
 
         # Add PID records to Elasticsearch
         try:
@@ -283,11 +288,6 @@ async def create_pidRecords_from_urls(
             errors.append(
                 {"error": e.__repr__(), "timestamp": datetime.now().isoformat()}
             )
-
-        logger.debug("PID records created")
-        pid_records.extend(
-            real_pid_records
-        )  # add PID records to the list of PID records
     else:
         logger.warning("Dryrun: Not creating PID records in TPM or Elasticsearch")
         pid_records.extend(
@@ -351,6 +351,27 @@ async def create_pidRecords_from_scratch(
     logger.info("Creating PID records from scratch for the following URLs:", urls)
 
     return await create_pidRecords_from_urls(repo, urls, dryrun)
+
+
+async def add_all_existing_pidRecords_to_elasticsearch() -> None:
+    """
+    Add all existing PID records to Elasticsearch.
+
+    Raises:
+        Exception: If an error occurs during the addition of the PID records to Elasticsearch
+    """
+    try:
+        pid_records = await tpm.getAllPIDRecords()
+        logger.info(f"found {len(pid_records)} PID records")
+        logger.info("Adding all existing PID records to Elasticsearch")
+        # await elasticsearch.addPIDRecords(pid_records)
+
+        with open("pid_records_all.json", "w") as f:
+            json.dump([record.toJSON() for record in pid_records], f)
+            logger.info("PID records written to file pid_records_all.json")
+    except Exception as e:
+        logger.error("Error adding PID records to Elasticsearch")
+        raise Exception("Error adding PID records to Elasticsearch", e)
 
 
 async def recreate_pidRecords_with_errors(repo: AbstractRepository) -> list[PIDRecord]:

@@ -27,6 +27,7 @@ from nmr_FAIR_DOs.lib import (
     create_pidRecords_from_scratch,
     getRepository,
     recreate_pidRecords_with_errors,
+    add_all_existing_pidRecords_to_elasticsearch,
 )
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
 
@@ -80,6 +81,15 @@ def retryErrors(repo: str):
     typer.echo(
         f"If errors occurred, please see error_{repository.repositoryID}.json for details."
     )
+
+
+@app.command()
+def buildElastic():
+    """
+    Build the ElasticSearch index for all available resources.
+    """
+    logger.info("Building the ElasticSearch index for all available resources.")
+    asyncio.run(add_all_existing_pidRecords_to_elasticsearch())
 
 
 if __name__ == "__main__":
