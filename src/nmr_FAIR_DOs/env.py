@@ -16,6 +16,7 @@
 #  limitations under the License.
 
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -47,3 +48,13 @@ if not CACHE_DIR:
 # Check if the cache directory exists
 if not os.path.isdir(CACHE_DIR):
     os.makedirs(CACHE_DIR)
+
+# Remove trailing slashes from the URLs if present
+if TPM_URL.endswith("/"):
+    TPM_URL = TPM_URL[:-1]
+if CHEMOTION_BASE_URL.endswith("/"):
+    CHEMOTION_BASE_URL = CHEMOTION_BASE_URL[:-1]
+if NMRXIV_BASE_URL.endswith("/"):
+    NMRXIV_BASE_URL = NMRXIV_BASE_URL[:-1]
+if ELASTICSEARCH_URL.endswith("/"):
+    ELASTICSEARCH_URL = ELASTICSEARCH_URL[:-1]

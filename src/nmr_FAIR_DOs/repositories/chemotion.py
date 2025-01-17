@@ -22,7 +22,7 @@ from typing import Callable
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
-from nmr_FAIR_DOs.utils import fetch_data, encodeInBase64
+from nmr_FAIR_DOs.utils import fetch_data, encodeInBase64, fetch_multiple
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -57,33 +57,42 @@ class ChemotionRepository(AbstractRepository):
     def repositoryID(self) -> str:
         return "Chemotion_" + self._baseURL
 
-    async def listAvailableURLs(self) -> list[str] | None:
-        return await self.listURLsForTimeFrame(datetime.min, datetime.now())
+    async def getAllAvailableResources(self) -> list[dict] | None:
+        return await self.listResourcesForTimeFrame(datetime.min, datetime.max)
 
-    async def listURLsForTimeFrame(
+    async def getResourcesForTimeFrame(
         self, start: datetime, end: datetime
-    ) -> list[str] | None:
-        return await self._getAllURLs(start, end)
+    ) -> list[dict]:
+        urls = await self._getAllURLs(start, end)
+        return await fetch_multiple(urls)
 
     async def extractPIDRecordFromResource(
-        self, url: str, addEntries: Callable[[str, list[PIDRecordEntry]], str]
+        self, resource: dict, addEntries: Callable[[str, list[PIDRecordEntry]], str]
     ) -> PIDRecord | None:
-        logger.debug("Extracting PID record from url", url, str(addEntries))
+        if (
+            not resource
+            or resource
+            or resource == "" == None
+            or not isinstance(resource, dict)
+        ):
+            raise ValueError("Resource cannot be empty and must be a dict.")
 
-        if not url or url == "" or url is None:
-            raise ValueError("URL cannot be empty.")
+        if (
+            not addEntries
+            or addEntries is None
+            or addEntries == ""
+            or not callable(addEntries)
+        ):
+            raise ValueError("addEntries function cannot be empty.")
 
-        response = await fetch_data(url)
-        if not response or response is None or not isinstance(response, dict):
-            raise ValueError("Invalid response from Chemotion repository.")
-        logger.debug("Extracted response from Chemotion repository", response)
+        logger.debug("Extracted resource from Chemotion repository", resource)
 
-        if response["@type"] == "Dataset":
-            return self._mapDataset2PIDRecord(response)
-        elif response["@type"] == "Study":
-            return self._mapStudy2PIDRecord(response, addEntries)
+        if resource["@type"] == "Dataset":
+            return self._mapDataset2PIDRecord(resource)
+        elif resource["@type"] == "Study":
+            return self._mapStudy2PIDRecord(resource, addEntries)
         else:
-            raise ValueError("Invalid response from Chemotion repository.")
+            raise ValueError("Invalid resource from Chemotion repository.")
 
     async def _getAllURLs(self, start: datetime, end: datetime):
         urls = []

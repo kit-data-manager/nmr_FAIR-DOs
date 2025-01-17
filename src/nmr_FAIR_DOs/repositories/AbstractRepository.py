@@ -22,6 +22,7 @@ from typing import Callable
 
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
+from nmr_FAIR_DOs.utils import fetch_multiple
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -29,6 +30,13 @@ logger = logging.getLogger(__name__)
 
 
 class AbstractRepository(ABC):
+    """
+    An abstract class representing a repository.
+
+    Attributes:
+        repositoryID (str): An identifier for the repository
+    """
+
     @property
     @abstractmethod
     def repositoryID(self) -> str:
@@ -41,44 +49,41 @@ class AbstractRepository(ABC):
         return NotImplemented
 
     @abstractmethod
-    async def listAvailableURLs(self) -> list[str] | None:
+    async def getAllAvailableResources(self) -> list[dict] | None:
         """
-        Returns a list of URLs for all resources available in the repository.
-        These URLs can be used to extract metadata from the resources.
+        Returns a list of all resources available in the repository.
 
         Returns:
-            list[str]: A list of URLs for all resources available in the repository
+            list[dict]: A list of all resources available in the repository
             None: If no resources are available in the repository
         """
         return NotImplemented
 
     @abstractmethod
-    async def listURLsForTimeFrame(
+    async def getResourcesForTimeFrame(
         self, start: datetime, end: datetime
-    ) -> list[str] | None:
+    ) -> list[dict]:
         """
-        Returns a list of URLs for all resources available in the repository within the specified time frame.
-        These URLs can be used to extract metadata from the resources.
+        Returns a list of all resources available in the repository within the specified time frame.
 
         Args:
             start (datetime): The start of the time frame
             end (datetime): The end of the time frame
 
         Returns:
-            list[str]: A list of URLs for all resources available in the repository within the specified time frame
-            None: If no resources are available in the repository within the specified time frame
+            list[dict]: A list of all resources available in the repository within the specified time frame
         """
         return NotImplemented
 
     @abstractmethod
     async def extractPIDRecordFromResource(
-        self, url: str, addEntries: Callable[[str, list[PIDRecordEntry]], str]
+        self, resource: dict, addEntries: Callable[[str, list[PIDRecordEntry]], str]
     ) -> PIDRecord | None:
         """
-        Extracts a PID record from the resource available at the specified URL.
+        Extracts a PID record from a resource of the repository.
 
         Args:
-            url (str): The URL of the resource
+            resource (dict): The resource to extract the PID record from
             addEntries (function): The function to add entries to a PIDRecord. This function expects the following arguments in the following order: (str, list[PIDRecordEntry]) and returns a str. The first argument is the (presumed) PID of the target record, the second argument is a list of entries to add to the target record. It returns the PID of the target record.
 
         Returns:
@@ -89,7 +94,7 @@ class AbstractRepository(ABC):
 
     async def extractAll(
         self, urls: list[str], addEntries: Callable[[str, list[PIDRecordEntry]], str]
-    ) -> tuple[list[PIDRecord], list[dict[str, str]]] | list[PIDRecord]:
+    ) -> tuple[list[PIDRecord], list[dict]] | list[PIDRecord]:
         """
         Extracts PID records from all resources available in the repository.
 
@@ -101,34 +106,38 @@ class AbstractRepository(ABC):
             tuple[list[PIDRecord], list[dict[str, str]]]: A tuple containing a list of extracted PID records and a list of errors encountered during extraction
             list[PIDRecord]: A list of extracted PID records
         """
+        resources = []
 
         if urls is None or not isinstance(urls, list) or len(urls) == 0:
             try:
-                urls = await self.listAvailableURLs()
+                resources = await self.getAllAvailableResources()
             except Exception as e:
                 logger.error(
-                    f"Error fetching URLs from repository {self.repositoryID}: {str(e)}"
+                    f"Error getting resources from repository {self.repositoryID}: {str(e)}"
                 )
                 return []
+        else:
+            resources = await fetch_multiple(urls)
 
-        if urls is None or len(urls) == 0:
-            logger.warning(f"No URLs available for repository {self.repositoryID}")
+        if resources is None or len(urls) == 0:
+            logger.warning(f"No resources available for repository {self.repositoryID}")
             return []
 
-        pid_records = []
-        errors = []
+        pid_records: list[PIDRecord] = []
+        errors: list[dict] = []
 
-        for url in urls:
+        for resource in resources:
             try:
-                # pid_record = await self.extractPIDRecordFromResource(url, localAddEntries)
-                pid_record = await self.extractPIDRecordFromResource(url, addEntries)
+                pid_record = await self.extractPIDRecordFromResource(
+                    resource, addEntries
+                )
                 if pid_record is not None:
                     pid_records.append(pid_record)
             except Exception as e:
-                logger.error(f"Error extracting PID record from {url}: {str(e)}")
+                logger.error(f"Error extracting PID record from {resource}: {str(e)}")
                 errors.append(
                     {
-                        "url": url,
+                        "url": resource,
                         "error": str(e),
                         "timestamp": datetime.now().isoformat(),
                     }
