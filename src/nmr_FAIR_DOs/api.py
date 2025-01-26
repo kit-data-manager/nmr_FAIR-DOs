@@ -22,7 +22,6 @@ from fastapi import FastAPI
 from nmr_FAIR_DOs.lib import (
     getRepository,
     create_pidRecords_from_scratch,
-    recreate_pidRecords_with_errors,
 )
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
 
@@ -44,18 +43,18 @@ def createAllAvailable(repo: str):
     return resources
 
 
-@app.get("/retry/{repo}")
-def retryErrors(repo: str):
-    """
-    Retry the creation of PID records for the resources that caused errors during the last run.
-    """
-    repository: AbstractRepository = getRepository(repo)
-    resources = asyncio.run(recreate_pidRecords_with_errors(repository))
-    print(f"Created PID records for {len(resources)} resources in {repo}.")
-    print(
-        f"If errors occurred, please see error_{repository.repositoryID}.json for details."
-    )
-    return resources
+# @app.get("/retry/{repo}")
+# def retryErrors(repo: str):
+#     """
+#     Retry the creation of PID records for the resources that caused errors during the last run.
+#     """
+#     repository: AbstractRepository = getRepository(repo)
+#     resources = asyncio.run(recreate_pidRecords_with_errors(repository))
+#     print(f"Created PID records for {len(resources)} resources in {repo}.")
+#     print(
+#         f"If errors occurred, please see error_{repository.repositoryID}.json for details."
+#     )
+#     return resources
 
 
 # @app.get("/calculate/{op}")

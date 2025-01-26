@@ -14,7 +14,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import json
 import logging
 from string import Template
 
@@ -92,10 +91,10 @@ class TPMConnector:
         if content is None or len(content) == 0:
             raise ValueError("No content to create due to invalid input")
 
-        logger.debug(
-            f"Creating FAIR-DOs at {self._tpm_url + endpoint}",
-            json.dumps(content)[:250],
-        )
+        # logger.debug(
+        #     f"Creating FAIR-DOs at {self._tpm_url + endpoint}",
+        #     json.dumps(content)[:250],
+        # )
         resource_response = requests.post(
             self._tpm_url + endpoint, headers=headers, json=content, timeout=None
         )
@@ -110,7 +109,7 @@ class TPMConnector:
         for i in resource_response.json():
             result.append(PIDRecord.fromJSON(i))
 
-        logger.info("Successfully created FAIR-DOs", result)
+        logger.info("Successfully created FAIR-DOs")
         return result
 
     def getPIDRecord(self, pid: str) -> PIDRecord:

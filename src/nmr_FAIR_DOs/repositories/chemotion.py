@@ -22,11 +22,13 @@ from typing import Callable
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
-from nmr_FAIR_DOs.utils import fetch_data, encodeInBase64, fetch_multiple
+from nmr_FAIR_DOs.utils import fetch_data, encodeInBase64, fetch_multiple, parseDateTime
 
-logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler(f"{__name__}.log")
+fh.setLevel(logging.DEBUG)
+logger.addHandler(fh)
 
 
 class ChemotionRepository(AbstractRepository):
@@ -58,7 +60,7 @@ class ChemotionRepository(AbstractRepository):
         return "Chemotion_" + self._baseURL
 
     async def getAllAvailableResources(self) -> list[dict] | None:
-        return await self.listResourcesForTimeFrame(datetime.min, datetime.max)
+        return await self.getResourcesForTimeFrame(datetime.min, datetime.max)
 
     async def getResourcesForTimeFrame(
         self, start: datetime, end: datetime
@@ -67,12 +69,16 @@ class ChemotionRepository(AbstractRepository):
         return await fetch_multiple(urls)
 
     async def extractPIDRecordFromResource(
-        self, resource: dict, addEntries: Callable[[str, list[PIDRecordEntry]], str]
+        self,
+        resource: dict,
+        addEntries: Callable[
+            [str, list[PIDRecordEntry], Callable[[str], None] | None], str
+        ],
     ) -> PIDRecord | None:
         if (
             not resource
-            or resource
-            or resource == "" == None
+            or resource is None
+            or resource == ""
             or not isinstance(resource, dict)
         ):
             raise ValueError("Resource cannot be empty and must be a dict.")
@@ -168,19 +174,21 @@ class ChemotionRepository(AbstractRepository):
         return urls
 
     @staticmethod
-    def _mapGenericInfo2PIDRecord(json) -> PIDRecord:
+    def _mapGenericInfo2PIDRecord(chemotion_content) -> PIDRecord:
         """
         Maps generic information to a PID record.
 
         Args:
-            json (dict): The JSON response from the Chemotion API.
+            chemotion_content (dict): The JSON response from the Chemotion API.
 
         Returns:
             PIDRecord: The PID record mapped from the generic information
         """
-        logger.debug("Mapping generic info to PID Record", json["@id"])
+        logger.debug("Mapping generic info to PID Record", chemotion_content["@id"])
 
-        fdo = PIDRecord(encodeInBase64(json["@id"].replace("https://doi.org/", "")))
+        fdo = PIDRecord(
+            encodeInBase64(chemotion_content["@id"].replace("https://doi.org/", ""))
+        )
 
         fdo.addEntry(
             "21.T11148/076759916209e5d62bd5",
@@ -196,7 +204,7 @@ class ChemotionRepository(AbstractRepository):
 
         fdo.addEntry(
             "21.T11148/a753134738da82809fc1",
-            json["publisher"][
+            chemotion_content["publisher"][
                 "url"
             ],  # TODO: Refer to FAIR-DO of the repository (via Handle PID)
             "hadPrimarySource",
@@ -204,7 +212,7 @@ class ChemotionRepository(AbstractRepository):
 
         fdo.addEntry(
             "21.T11148/b8457812905b83046284",
-            json["@id"].replace("https://doi.org/", ""),
+            f"https://doi.org/{chemotion_content["@id"].replace("https://doi.org/", "")}",
             "digitalObjectLocation",
         )
 
@@ -292,9 +300,9 @@ class ChemotionRepository(AbstractRepository):
             return contacts
 
         contact = []
-        contact.extend(extractContactField("author", json))
-        contact.extend(extractContactField("creator", json))
-        contact.extend(extractContactField("contributor", json))
+        contact.extend(extractContactField("author", chemotion_content))
+        contact.extend(extractContactField("creator", chemotion_content))
+        contact.extend(extractContactField("contributor", chemotion_content))
 
         logger.debug("Found contacts", contact)
 
@@ -305,15 +313,21 @@ class ChemotionRepository(AbstractRepository):
                 "contact",
             )
 
-        if "dateModified" in json:
+        if "dateModified" in chemotion_content:
             fdo.addEntry(
-                "21.T11148/397d831aa3a9d18eb52c", json["dateModified"], "dateModified"
+                "21.T11148/397d831aa3a9d18eb52c",
+                parseDateTime(chemotion_content["dateModified"]).isoformat(),
+                "dateModified",
             )
 
-        if "dateCreated" in json:
+        if "dateCreated" in chemotion_content:
             fdo.addEntry(
-                "21.T11148/aafd5fb4c7222e2d950a", json["dateCreated"], "dateCreated"
+                "21.T11148/aafd5fb4c7222e2d950a",
+                parseDateTime(chemotion_content["dateCreated"]).isoformat(),
+                "dateCreated",
             )
+        # else:
+        # raise ValueError("No dateCreated found in document", json["@id"]) TODO: WHY DO SO MANY ENTRIES NOT HAVE A DATE_CREATED?
 
         logger.debug("Mapped generic info to FAIR-DO", fdo)
         return fdo
@@ -355,11 +369,12 @@ class ChemotionRepository(AbstractRepository):
                 "21.T11148/f3f0cbaa39fa9966b279", dataset["identifier"], "identifier"
             )
 
-            fdo.addEntry(
-                "21.T11969/7a19f6d5c8e63dd6bfcb",
-                dataset["measurementTechnique"]["@id"],
-                "NMR method",
-            )
+            if "measurementTechnique" in dataset:
+                fdo.addEntry(
+                    "21.T11969/7a19f6d5c8e63dd6bfcb",
+                    dataset["measurementTechnique"]["@id"],
+                    "NMR method",
+                )
 
             fdo.addEntry(
                 "21.T11148/2f314c8fe5fb6a0063a8", dataset["license"], "license"
@@ -384,7 +399,10 @@ class ChemotionRepository(AbstractRepository):
 
     @staticmethod
     def _mapStudy2PIDRecord(
-        study, addEntries: Callable[[str, list[PIDRecordEntry]], str]
+        study,
+        addEntries: Callable[
+            [str, list[PIDRecordEntry], Callable[[str], None] | None], str
+        ],
     ) -> PIDRecord:
         """
         Maps a study to a PID record.
@@ -409,7 +427,7 @@ class ChemotionRepository(AbstractRepository):
             fdo = ChemotionRepository._mapGenericInfo2PIDRecord(study)
 
             fdo.addEntry(
-                "21.T11969/a00985b98dac27bd32f8", "Study", "resourceType"
+                "21.T11969/a00985b98dac27bd32f8", "Collection", "resourceType"
             )  # TODO: assign PID to resourceType
 
             fdo.addEntry(
@@ -440,11 +458,58 @@ class ChemotionRepository(AbstractRepository):
                     )
 
                 if "hasBioChemEntityPart" in entry:
-                    fdo.addEntry(
-                        "21.T11969/d15381199a44a16dc88d",
-                        entry["hasBioChemEntityPart"]["molecularWeight"]["value"],
-                        "characterizedCompound",
-                    )
+                    parts = entry["hasBioChemEntityPart"]
+                    if not isinstance(parts, list) or isinstance(parts, dict):
+                        parts = [parts]
+
+                    for part in parts:
+                        value = {}
+                        if (
+                            "molecularWeight" in part
+                            and "value" in part["molecularWeight"]
+                            and part["molecularWeight"]["value"] is not None
+                        ):
+                            value["21.T11969/6c4d3deac9a49b65886a"] = float(
+                                part["molecularWeight"]["value"]
+                            )
+                        if "url" in part and part["url"] is not None:
+                            value["21.T11969/f9cb9b53273ce0da7739"] = part["url"]
+
+                        if len(value) > 0:
+                            fdo.addEntry(
+                                "21.T11969/d15381199a44a16dc88d",
+                                value,
+                                "characterizedCompound",
+                            )
+                        else:
+                            logger.error(
+                                f"The provided part does not contain a molecularWeight or url: {part}"
+                            )
+                            # logger.error("The provided part does not contain a molecularWeight ", part)
+                            # raise ValueError("The provided part does not contain a molecularWeight ", part)
+
+                    # part = entry["hasBioChemEntityPart"]
+                    # value: dict = {}
+                    #
+                    # if "molecularWeight" in part:
+                    #     value["21.T11969/6c4d3deac9a49b65886a"] = part["molecularWeight"]["value"]
+                    # if "url" in entry:
+                    #     value["21.T11969/f9cb9b53273ce0da7739"] = part["url"]
+                    #
+                    # if len(value) > 0:
+                    #     fdo.addEntry(
+                    #         "21.T11969/d15381199a44a16dc88d",
+                    #         json.dumps(value),
+                    #         "characterizedCompound",
+                    #     )
+                    # else:
+                    #     logger.error("The provided part does not contain a molecularWeight ", part)
+
+                    # fdo.addEntry(
+                    #     "21.T11969/d15381199a44a16dc88d",
+                    #     entry["hasBioChemEntityPart"]["molecularWeight"]["value"],
+                    #     "characterizedCompound",
+                    # )
                 if "name" in entry:
                     fdo.addEntry(
                         "21.T11148/6ae999552a0d2dca14d6", entry["name"], "name"
@@ -463,7 +528,7 @@ class ChemotionRepository(AbstractRepository):
                     )
 
                 if "subjectOf" in entry:
-                    for dataset in study["about"][0]["subjectOf"]:
+                    for dataset in entry["subjectOf"]:
                         presumedDatasetID = encodeInBase64(
                             dataset["@id"].replace("https://doi.org/", "")
                         )
@@ -473,17 +538,75 @@ class ChemotionRepository(AbstractRepository):
                                 "21.T11148/d0773859091aeb451528",
                                 fdo.getPID(),
                                 "hasMetadata",
-                            ),
+                            )
                         ]
 
+                        if (
+                            not fdo.entryExists("21.T11148/aafd5fb4c7222e2d950a")
+                            and "dateCreated" in dataset
+                        ):
+                            fdo.addEntry(
+                                "21.T11148/aafd5fb4c7222e2d950a",
+                                parseDateTime(dataset["dateCreated"]).isoformat(),
+                                "dateCreated",
+                            )
+
+                        if fdo.entryExists("21.T11148/7fdada5846281ef5d461"):
+                            images = fdo.getEntry("21.T11148/7fdada5846281ef5d461")
+                            logger.debug(f"Found images in study {images}")
+                            if images is not None and isinstance(images, list):
+                                datasetEntries.extend(images)
+                            elif images is not None and isinstance(
+                                images, PIDRecordEntry
+                            ):
+                                datasetEntries.append(images)
+
+                        if fdo.entryExists("21.T11969/d15381199a44a16dc88d"):
+                            compounds = fdo.getEntry("21.T11969/d15381199a44a16dc88d")
+                            logger.debug(f"Found compounds in study {compounds}")
+                            if compounds is not None and isinstance(compounds, list):
+                                datasetEntries.extend(compounds)
+                            elif compounds is not None and isinstance(
+                                compounds, PIDRecordEntry
+                            ):
+                                datasetEntries.append(compounds)
+
                         try:
-                            datasetPID = addEntries(presumedDatasetID, datasetEntries)
-                            if datasetPID is not None:
-                                fdo.addEntry(
-                                    "21.T11148/4fe7cde52629b61e3b82",
-                                    datasetPID,
-                                    "isMetadataFor",
-                                )
+
+                            def add_metadata_entry(fdo_pid: str, pid: str) -> None:
+                                if pid is not None:
+                                    addEntries(
+                                        fdo_pid,
+                                        [
+                                            PIDRecordEntry(
+                                                "21.T11148/4fe7cde52629b61e3b82",
+                                                pid,
+                                                "isMetadataFor",
+                                            )
+                                        ],
+                                        None,
+                                    )
+
+                            addEntries(
+                                presumedDatasetID,
+                                datasetEntries,
+                                lambda pid: add_metadata_entry(fdo.getPID(), pid),
+                            )
+
+                            # onsuccess = lambda pid: add_metadata_entry(
+                            #     fdo.getPID(), pid
+                            # )
+                            # addEntries(presumedDatasetID, datasetEntries, onsuccess)
+                            ## define a lambda function that uses a string parameter to add an entry to fdo
+                            # onsuccess = lambda pid: fdo.addEntry("21.T11148/4fe7cde52629b61e3b82", value, "isMetadataFor")
+                            #
+                            # datasetPID = addEntries(presumedDatasetID, datasetEntries, onsuccess)
+                            # if datasetPID is not None:
+                            #     fdo.addEntry(
+                            #         "21.T11148/4fe7cde52629b61e3b82",
+                            #         datasetPID,
+                            #         "isMetadataFor",
+                            #     )
                         except Exception as e:
                             logger.error(
                                 "Error adding dataset reference to study",

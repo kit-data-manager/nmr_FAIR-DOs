@@ -77,7 +77,11 @@ class AbstractRepository(ABC):
 
     @abstractmethod
     async def extractPIDRecordFromResource(
-        self, resource: dict, addEntries: Callable[[str, list[PIDRecordEntry]], str]
+        self,
+        resource: dict,
+        addEntries: Callable[
+            [str, list[PIDRecordEntry], Callable[[str], None] | None], str
+        ],
     ) -> PIDRecord | None:
         """
         Extracts a PID record from a resource of the repository.
@@ -93,7 +97,11 @@ class AbstractRepository(ABC):
         return NotImplemented
 
     async def extractAll(
-        self, urls: list[str], addEntries: Callable[[str, list[PIDRecordEntry]], str]
+        self,
+        urls: list[str],
+        addEntries: Callable[
+            [str, list[PIDRecordEntry], Callable[[str], None] | None], str
+        ],
     ) -> tuple[list[PIDRecord], list[dict]] | list[PIDRecord]:
         """
         Extracts PID records from all resources available in the repository.
@@ -129,7 +137,8 @@ class AbstractRepository(ABC):
         for resource in resources:
             try:
                 pid_record = await self.extractPIDRecordFromResource(
-                    resource, addEntries
+                    resource,
+                    addEntries,
                 )
                 if pid_record is not None:
                     pid_records.append(pid_record)

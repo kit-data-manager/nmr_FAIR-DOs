@@ -33,12 +33,12 @@ async def extractDataTypeNameFromPID(pid):
         # Return the known data type name
         return typeMappings[pid]
     else:
-        url = requests.get("https://hdl.handle.net/" + pid, verify=False).url
+        url = requests.get("https://hdl.handle.net/" + pid).url
         url = url.replace("#", "")
         # url = "https://dtr-test.pidconsortium.net/objects/" + pid
         logger.debug("Requesting data type name from Data Type Registry: " + url)
         # Get the data type name from the Data Type Registry
-        response = requests.get(url, verify=False)
+        response = requests.get(url)
         response = json.loads(response.text)
         # Store the data type name in the typeMappings dictionary
         typeMappings[pid] = response["name"]

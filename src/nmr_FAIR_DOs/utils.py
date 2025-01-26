@@ -27,7 +27,7 @@ from nmr_FAIR_DOs.env import CACHE_DIR
 logger = logging.getLogger(__name__)
 
 
-async def fetch_data(url: str, forceFresh: bool = False):
+async def fetch_data(url: str, forceFresh: bool = False) -> dict:
     """
     Fetches data from the specified URL.
 
@@ -73,7 +73,7 @@ async def fetch_data(url: str, forceFresh: bool = False):
         raise ValueError(str(e), url, datetime.now().isoformat())
 
 
-async def fetch_multiple(urls: list[str], forceFresh: bool = False):
+async def fetch_multiple(urls: list[str], forceFresh: bool = False) -> list[dict]:
     """
     Fetches data from multiple URLs.
 
@@ -118,3 +118,68 @@ def encodeInBase64(data: str) -> str:
 
     result = base64.b64encode(bytes(data, "utf-8")).decode("utf-8")
     return result
+
+
+def decodeFromBase64(data: str) -> str:
+    """
+    Decodes the given Base64 encoded data.
+
+    Args:
+        data (str): The Base64 encoded data to decode
+
+    Returns:
+        str: The decoded data
+
+    Raises:
+        ValueError: If the data is None or empty
+    """
+    if data is None or len(data) == 0:
+        raise ValueError("Data must not be None or empty")
+
+    result = base64.b64decode(data).decode("utf-8")
+    return result
+
+
+def parseDateTime(text: str) -> datetime:
+    """
+    Parses a datetime from an arbitrary string.
+
+    Args:
+        text (str): The string to parse
+
+    Returns:
+        datetime: The parsed datetime
+
+    Raises:
+        ValueError: If the text is None or empty or the datetime cannot be parsed
+    """
+    if text is None or len(text) == 0:
+        raise ValueError("Text must not be None or empty")
+
+    ## Support none-ISO8601 datetime formats
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        pass
+
+    try:
+        return datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        pass
+
+    try:
+        return datetime.strptime(text, "%Y-%m-%d")
+    except ValueError:
+        pass
+
+    try:
+        return datetime.strptime(text, "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        pass
+
+    try:
+        return datetime.strptime(text, "%Y-%m-%dT%H:%M:%S.%f")
+    except ValueError:
+        pass
+
+    raise ValueError("Could not parse datetime from text " + text)

@@ -19,6 +19,10 @@ import logging
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler(f"{__name__}.log")
+fh.setLevel(logging.DEBUG)
+logger.addHandler(fh)
 
 
 class PIDRecord:
@@ -70,20 +74,37 @@ class PIDRecord:
             raise ValueError("Value must not be None")
 
         if entry.key not in self._entries:
+            logger.debug(f"Adding entry {entry} to PID record")
             self._entries[entry.key] = [entry]
         elif isinstance(self._entries[entry.key], list):
-            if entry not in self._entries[entry.key]:
-                self._entries[entry.key].append(entry)
+            if not any(
+                e.value == entry.value
+                for e in self._entries[
+                    entry.key
+                ]  # Check if the entry value is already in the list
+            ):
+                logger.debug(
+                    f"Adding entry {entry} to PID record. Entry with key {entry.key} already exists. Adding to list"
+                )
+                self._entries[entry.key].append(
+                    entry
+                )  # Add the entry to the list iff the value is not already in the list
+            logger.debug(
+                f"Entry with key {entry.key} and value {entry.value} already exists. Skipping"
+            )
         else:
+            logger.debug(
+                f"Adding entry {entry} to PID record. Entry with key {entry.key} already exists. Converting to list"
+            )
             self._entries[entry.key] = [self._entries[entry.key], entry]
 
-    def addEntry(self, key: str, value: str, name: str = None):
+    def addEntry(self, key: str, value: str | dict, name: str = None):
         """
         Adds an entry to the PID record
         If the entry already exists, it is not added again (no duplicates)
 
         :param key:str The key of the entry
-        :param value:str The value of the entry
+        :param value:str|dict The value of the entry
         :param name:str The name of the entry (optional)
 
         :raises ValueError: If the key is None or the values are None
@@ -160,11 +181,11 @@ class PIDRecord:
         else:
             return None
 
-    def deleteEntry(self, key: str, value: str = None):
+    def deleteEntry(self, key: str, value: str | dict = None):
         """
         Deletes an entry from the PID record
 
-        :param key:str The key of the entry
+        :param key:str|dict The key of the entry
         :param value: The value of the entry (optional) If the value is None, all entries with the given key are deleted. If the value is not None, only the entry with the given key and value is deleted.
 
         :raises ValueError: If the key is None
@@ -186,7 +207,7 @@ class PIDRecord:
         """
         self._entries = {}
 
-    def entryExists(self, key: str, value: str = None) -> bool:
+    def entryExists(self, key: str, value: str | dict = None) -> bool:
         """
         Checks if an entry exists
 
@@ -263,16 +284,21 @@ class PIDRecord:
                 for entry in value:
                     if "value" not in entry or "key" not in entry:
                         # Skip this entry if it does not contain a key or value
+                        logger.warning(
+                            f"Skipping entry {entry} because it does not contain a key or value"
+                        )
                         continue
-                    if "name" in entry:
+                    elif "name" in entry:
+                        # If the entry contains a name, add it to the PIDRecordEntry
                         entries.append(
                             PIDRecordEntry(key, entry["value"], entry["name"])
                         )
                     else:
+                        # If the entry does not contain a name, add it without a name
                         entries.append(PIDRecordEntry(key, entry["value"]))
 
             logger.debug(
-                "Extracted PID record from JSON", PIDRecord(input_json["pid"], entries)
+                f"Extracted PID record from JSON: {PIDRecord(input_json["pid"], entries)}"
             )
             return PIDRecord(input_json["pid"], entries)
 

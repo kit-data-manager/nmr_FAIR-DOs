@@ -15,6 +15,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler(f"{__name__}.log")
+fh.setLevel(logging.DEBUG)
+logger.addHandler(fh)
 
 
 class PIDRecordEntry(dict):
@@ -28,10 +35,10 @@ class PIDRecordEntry(dict):
     """
 
     key: str
-    value: str
+    value: str | dict
     name: str
 
-    def __init__(self, key: str, value: str, name: str = None):
+    def __init__(self, key: str, value: str | dict, name: str = None):
         """
         Creates a PID record entry
 
@@ -48,9 +55,20 @@ class PIDRecordEntry(dict):
 
         if value is None:
             raise ValueError("Value must not be None")
+        elif not isinstance(value, str) and not isinstance(value, dict):
+            raise ValueError("Value must be a string or a dictionary")
+
+        try:
+            if isinstance(value, str):  # if value is a JSON string, parse it
+                self.value = json.loads(value)
+            else:
+                self.value = value
+        except Exception as e:
+            logger.debug(f"Value is not a JSON string: {value}, {e}")
+            self.value = value  # if value is not a JSON string, use it as is
 
         self.key = key
-        self.value = value
+        # self.value = value
         self.name = name
 
     def __getitem__(self, item):
@@ -64,10 +82,12 @@ class PIDRecordEntry(dict):
             return None
 
     def __str__(self):
-        return json.dumps({"key": self.key, "value": self.value, "name": self.name})
+        val = json.dumps(self.value) if isinstance(self.value, dict) else self.value
+        return json.dumps({"key": self.key, "value": val, "name": self.name})
 
     def __repr__(self):
-        return json.dumps({"key": self.key, "value": self.value, "name": self.name})
+        val = json.dumps(self.value) if isinstance(self.value, dict) else self.value
+        return json.dumps({"key": self.key, "value": val, "name": self.name})
 
     def toJSON(self):
         """
@@ -75,10 +95,13 @@ class PIDRecordEntry(dict):
 
         :return:dict The PID record entry as JSON
         """
+        val = json.dumps(self.value) if isinstance(self.value, dict) else self.value
+
         if self.name is None:
-            return {"key": self.key, "value": self.value}
+            return {"key": self.key, "value": val}
         else:
-            return {"key": self.key, "value": self.value, "name": self.name}
+            return {"key": self.key, "value": val, "name": self.name}
 
     def __dict__(self):
-        return {"key": self.key, "value": self.value, "name": self.name}
+        val = json.dumps(self.value) if isinstance(self.value, dict) else self.value
+        return {"key": self.key, "value": val, "name": self.name}

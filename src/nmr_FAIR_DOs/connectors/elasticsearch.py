@@ -19,6 +19,7 @@ import logging
 from datetime import datetime
 
 from elasticsearch import Elasticsearch
+from elasticsearch.helpers import bulk
 
 from nmr_FAIR_DOs.domain.dataType import extractDataTypeNameFromPID
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
@@ -27,6 +28,65 @@ from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+always_as_list = ["isMetadataFor", "hasMetadata"]
+
+
+async def _generate_elastic_JSON_from_PIDRecord(pidRecord):
+    result: dict = {"pid": pidRecord.getPID()}
+
+    def addToResult(human_readable_key: str, value_to_add: str):
+        """
+        Adds a key and a value to the result. If the key already exists in the result, the value is added to a list.
+        If the key is in the always_as_list list, the value is always as a list.
+
+        Args:
+            human_readable_key (str): The key to add to the result
+            value_to_add (str): The value to add to the result
+        """
+        if human_readable_key in result:
+            if isinstance(result[human_readable_key], list):
+                result[human_readable_key].append(
+                    value_to_add
+                )  # add the value to the existing list
+            else:
+                result[human_readable_key] = [
+                    result[human_readable_key],
+                    value_to_add,
+                ]  # create a list with the existing value and the new value
+        elif (
+            human_readable_key in always_as_list and not isinstance(value_to_add, list)
+        ):  # for some keys, the value should always be a list (e.g. isMetadataFor, hasMetadata). Ensure that the value is not a list to avoid creating a list of lists
+            result[human_readable_key] = [value_to_add]  # create a list with the value
+        else:
+            result[human_readable_key] = value_to_add  # add the value to the result
+
+    # Extract the entries from the PID record
+    for attribute, value in pidRecord.getEntries().items():
+        key = await extractDataTypeNameFromPID(attribute)
+        for i in value:  # iterate over the values of the PID record entry
+            if isinstance(i, PIDRecordEntry):  # if the value is a PIDRecordEntry
+                if isinstance(
+                    i.value, dict
+                ):  # if the value of the PIDRecordEntry is a dict
+                    for k, v in i.value.items():  # iterate over the dict
+                        kString = f"{key}.{await extractDataTypeNameFromPID(k)}"  # create a key string by concatenating the key and the extracted data type name from the PID
+                        addToResult(
+                            kString, v
+                        )  # add the key string and the value to the result
+                else:  # if the value of the PIDRecordEntry is not a dict (i.e. a string)
+                    addToResult(key, i.value)  # add the key and the value to the result
+            else:
+                addToResult(key, i["value"])  # add the key and the value to the result
+
+    # Extract the timestamp from the PID record or use the current time as timestamp
+    if pidRecord.entryExists("21.T11148/aafd5fb4c7222e2d950a"):
+        result["timestamp"] = pidRecord.getEntries()["21.T11148/aafd5fb4c7222e2d950a"][
+            0
+        ].value
+    else:
+        result["timestamp"] = datetime.now().isoformat()
+    return result
 
 
 class ElasticsearchConnector:
@@ -60,28 +120,7 @@ class ElasticsearchConnector:
             logger.info("Created index " + indexName)
 
     async def addPIDRecord(self, pidRecord: PIDRecord):
-        result: dict = {"pid": pidRecord.getPID()}
-
-        # Extract the entries from the PID record
-        for attribute, value in pidRecord.getEntries().items():
-            # Extract the key
-            key = await extractDataTypeNameFromPID(attribute)
-
-            values = [
-                {"value": i.value if isinstance(i, PIDRecordEntry) else i["value"]}
-                for i in value
-            ]
-
-            # Store the values in the result
-            result[key] = values if len(values) > 1 else values[0]
-
-        # Extract the timestamp from the PID record or use the current time as timestamp
-        if pidRecord.entryExists("21.T11148/aafd5fb4c7222e2d950a"):
-            result["timestamp"] = pidRecord.getEntries()[
-                "21.T11148/aafd5fb4c7222e2d950a"
-            ][0].value
-        else:
-            result["timestamp"] = datetime.now().isoformat()
+        result = await _generate_elastic_JSON_from_PIDRecord(pidRecord)
 
         response = self._client.index(
             index=self._indexName, id=result["pid"], document=result
@@ -99,8 +138,26 @@ class ElasticsearchConnector:
         )
 
     async def addPIDRecords(self, pidRecords: list[PIDRecord]):
-        for pidRecord in pidRecords:
-            await self.addPIDRecord(pidRecord)
+        # bulk insert the PID records into the index with the elastic bulk API
+
+        actions = [
+            {
+                "_op_type": "create",
+                "_index": self._indexName,
+                "_id": pidRecord.getPID(),
+                "_source": await _generate_elastic_JSON_from_PIDRecord(pidRecord),
+            }
+            for pidRecord in pidRecords
+        ]
+
+        response = bulk(self._client, actions)
+        logger.debug(
+            "Elasticsearch response for bulk insert of PID records: ", response
+        )
+
+        #
+        # for pidRecord in pidRecords:
+        #     await self.addPIDRecord(pidRecord)
 
     def searchForPID(self, presumedPID: str) -> str:
         response = self._client.search(

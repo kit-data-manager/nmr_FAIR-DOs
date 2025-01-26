@@ -25,15 +25,22 @@ import typer
 
 from nmr_FAIR_DOs.lib import (
     create_pidRecords_from_scratch,
-    getRepository,
-    recreate_pidRecords_with_errors,
+    getRepositories,
     add_all_existing_pidRecords_to_elasticsearch,
 )
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
 
 logging.basicConfig()
+# logging.basicConfig(filename="nmr_FAIR_DOs.log",
+#                     filemode='a',
+#                     format='%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s',
+#                     datefmt='%Y-%m-%d %H:%M:%S',
+#                     level=logging.DEBUG)
 logging.getLogger().setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
+fh = logging.FileHandler("all.log")
+fh.setLevel(logging.DEBUG)
+logger.addHandler(fh)
 
 # create subcommand app
 say = typer.Typer()
@@ -45,51 +52,55 @@ app.add_typer(say, name="say")
 
 @app.command()
 def createAllAvailable(
-    repo: str, start: datetime = None, end: datetime = None, dryrun: bool = False
+    repositories: list[str] = [None],
+    start: datetime = None,
+    end: datetime = None,
+    dryrun: bool = False,
 ):
     """
     Create PID records for all available resources.
     """
     logger.info(
-        f"Creating PID records for all available resources in {repo} in timerange {start}-{end}. Dryrun: {dryrun}"
+        f"Creating PID records for all available resources in {repositories} in timerange {start}-{end}. Dryrun: {dryrun}"
     )
 
-    repository: AbstractRepository = getRepository(repo)
-    resources = asyncio.run(
-        create_pidRecords_from_scratch(repository, start, end, dryrun)
-    )
+    repos: list[AbstractRepository] = getRepositories(repositories)
+    resources = asyncio.run(create_pidRecords_from_scratch(repos, start, end, dryrun))
 
-    typer.echo(f"Created PID records for {len(resources)} resources in {repo}.")
-    typer.echo(
-        f"If errors occurred, please see error_{repository.repositoryID}.json for details. You can retry the creation of PID records for the failed resources by using the 'retryErrors' command."
-    )
+    typer.echo(f"Created PID records for {len(resources)} resources in {repos}.")
+    typer.echo("If errors occurred, please see error_*.json for details.")
+
+
+#
+# @app.command()
+# def retryErrors(repo: str):
+#     """
+#     Retry the creation of PID records for the resources that caused errors during the last run.
+#     """
+#     logger.info(
+#         f"Retrying the creation of PID records for the resources that caused errors during the last run in {repo}."
+#     )
+#
+#     repository: AbstractRepository = getRepository(repo)
+#     resources = asyncio.run(recreate_pidRecords_with_errors(repository))
+#
+#     typer.echo(f"Created PID records for {len(resources)} resources in {repo}.")
+#     typer.echo(
+#         f"If errors occurred, please see error_{repository.repositoryID}.json for details."
+#     )
 
 
 @app.command()
-def retryErrors(repo: str):
-    """
-    Retry the creation of PID records for the resources that caused errors during the last run.
-    """
-    logger.info(
-        f"Retrying the creation of PID records for the resources that caused errors during the last run in {repo}."
-    )
-
-    repository: AbstractRepository = getRepository(repo)
-    resources = asyncio.run(recreate_pidRecords_with_errors(repository))
-
-    typer.echo(f"Created PID records for {len(resources)} resources in {repo}.")
-    typer.echo(
-        f"If errors occurred, please see error_{repository.repositoryID}.json for details."
-    )
-
-
-@app.command()
-def buildElastic():
+def buildElastic(
+    from_file: str = typer.Option(
+        None, help="Path to a file containing PID records to be indexed."
+    ),
+):
     """
     Build the ElasticSearch index for all available resources.
     """
     logger.info("Building the ElasticSearch index for all available resources.")
-    asyncio.run(add_all_existing_pidRecords_to_elasticsearch())
+    asyncio.run(add_all_existing_pidRecords_to_elasticsearch(from_file))
 
 
 if __name__ == "__main__":
