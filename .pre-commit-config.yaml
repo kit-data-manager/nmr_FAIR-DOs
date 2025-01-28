@@ -21,7 +21,7 @@ repos:
     rev: 'v1.10.1'
     hooks:
       - id: mypy
-        args: [ --no-strict-optional, --ignore-missing-imports]
+        args: [ --no-strict-optional, --ignore-missing-imports, --check-untyped-defs]
         # NOTE: you might need to add some deps here:
         additional_dependencies: ["requests", "types-requests"]
 

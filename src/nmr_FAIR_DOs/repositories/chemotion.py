@@ -91,7 +91,9 @@ class ChemotionRepository(AbstractRepository):
         ):
             raise ValueError("addEntries function cannot be empty.")
 
-        logger.debug("Extracted resource from Chemotion repository", resource)
+        logger.debug(
+            f"Extracted resource from Chemotion repository: {str(resource)[0:100]}"
+        )
 
         if resource["@type"] == "Dataset":
             return self._mapDataset2PIDRecord(resource)
@@ -184,7 +186,7 @@ class ChemotionRepository(AbstractRepository):
         Returns:
             PIDRecord: The PID record mapped from the generic information
         """
-        logger.debug("Mapping generic info to PID Record", chemotion_content["@id"])
+        logger.debug(f"Mapping generic info to PID Record: {chemotion_content["@id"]}")
 
         fdo = PIDRecord(
             encodeInBase64(chemotion_content["@id"].replace("https://doi.org/", ""))
@@ -304,7 +306,7 @@ class ChemotionRepository(AbstractRepository):
         contact.extend(extractContactField("creator", chemotion_content))
         contact.extend(extractContactField("contributor", chemotion_content))
 
-        logger.debug("Found contacts", contact)
+        logger.debug(f"Found {len(contact)} contacts")
 
         for contact_id in contact:
             fdo.addEntry(
@@ -329,7 +331,7 @@ class ChemotionRepository(AbstractRepository):
         # else:
         # raise ValueError("No dateCreated found in document", json["@id"]) TODO: WHY DO SO MANY ENTRIES NOT HAVE A DATE_CREATED?
 
-        logger.debug("Mapped generic info to FAIR-DO", fdo)
+        logger.debug(f"Mapped generic info to FAIR-DO: {fdo.getPID()}")
         return fdo
 
     @staticmethod
@@ -427,7 +429,7 @@ class ChemotionRepository(AbstractRepository):
             fdo = ChemotionRepository._mapGenericInfo2PIDRecord(study)
 
             fdo.addEntry(
-                "21.T11969/a00985b98dac27bd32f8", "Collection", "resourceType"
+                "21.T11969/a00985b98dac27bd32f8", "Study", "resourceType"
             )  # TODO: assign PID to resourceType
 
             fdo.addEntry(

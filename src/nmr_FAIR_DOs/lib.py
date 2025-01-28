@@ -409,9 +409,7 @@ async def create_pidRecords_from_scratch(
                 f.write(datetime.now().isoformat())
             resources = await repo.getAllAvailableResources()
 
-        logger.info(
-            "Creating PID records from scratch for the following URLs:", resources
-        )
+        logger.info(f"Creating PID records from scratch for {len(resources)} resources")
 
         await create_pidRecords_from_resources(repo, resources)
 

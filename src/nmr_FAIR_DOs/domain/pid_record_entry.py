@@ -51,18 +51,22 @@ class PIDRecordEntry(dict):
 
         super().__init__()
         if key is None:
-            raise ValueError("Key must not be None")
+            raise ValueError(f"Key must not be None: {self.__repr__()}")
 
         if value is None:
-            raise ValueError("Value must not be None")
+            raise ValueError(f"Value must not be None: {self.__repr__()}")
         elif not isinstance(value, str) and not isinstance(value, dict):
-            raise ValueError("Value must be a string or a dictionary")
+            logger.warning(
+                f"Value SHOULD be a string or a dictionary: {key}({name}), {value}"
+            )
 
         try:
             if isinstance(value, str):  # if value is a JSON string, parse it
                 self.value = json.loads(value)
-            else:
+            elif isinstance(value, dict):
                 self.value = value
+            else:
+                self.value = str(value)
         except Exception as e:
             logger.debug(f"Value is not a JSON string: {value}, {e}")
             self.value = value  # if value is not a JSON string, use it as is

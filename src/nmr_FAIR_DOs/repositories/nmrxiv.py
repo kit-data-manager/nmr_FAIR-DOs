@@ -273,7 +273,9 @@ class NMRXivRepository(AbstractRepository):
             original_resource = resource["original"]
             bioschema_resource = resource["bioschema"]
 
-            logger.debug("Mapping generic info to PID Record", original_resource["doi"])
+            logger.debug(
+                f"Mapping generic info to PID Record: {original_resource["doi"]}"
+            )
             fdo = PIDRecord(encodeInBase64(original_resource["doi"]))
 
             fdo.addEntry(
@@ -390,7 +392,7 @@ class NMRXivRepository(AbstractRepository):
                         #     "contact",
                         # )
 
-            logger.debug("Mapped generic info to FAIR-DO", fdo)
+            logger.debug(f"Mapped generic info to FAIR-DO: {fdo.getPID()}")
             return fdo
         except Exception as e:
             logger.error(f"Error mapping generic info to FAIR-DO: {str(e)}", resource)
@@ -407,7 +409,7 @@ class NMRXivRepository(AbstractRepository):
             or original_dataset is None
             or not isinstance(original_dataset, dict)
             or not original_dataset["identifier"].startswith("NMRXIV:D")
-            or "type" not in bioschema_dataset
+            or "@type" not in bioschema_dataset
             or bioschema_dataset["@type"] != "Dataset"
         ):
             raise ValueError(
@@ -415,7 +417,7 @@ class NMRXivRepository(AbstractRepository):
             )
 
         try:
-            logger.info("mapping dataset to FAIR-DO", bioschema_dataset["@id"])
+            logger.info(f"mapping dataset to FAIR-DO: {bioschema_dataset["@id"]}")
             fdo = self._mapGenericInfo2PIDRecord(dataset)
 
             fdo.addEntry(
@@ -433,11 +435,16 @@ class NMRXivRepository(AbstractRepository):
                 )
 
             if "measurementTechnique" in bioschema_dataset:
-                fdo.addEntry(
-                    "21.T11969/7a19f6d5c8e63dd6bfcb",
-                    bioschema_dataset["measurementTechnique"]["url"],
-                    "NMR method",
-                )
+                if "url" in bioschema_dataset["measurementTechnique"]:
+                    fdo.addEntry(
+                        "21.T11969/7a19f6d5c8e63dd6bfcb",
+                        bioschema_dataset["measurementTechnique"]["url"],
+                        "NMR method",
+                    )
+                else:
+                    logger.info(
+                        f"Measurement technique in entry {bioschema_dataset["@id"]} has no URL: {bioschema_dataset['measurementTechnique']}"
+                    )
 
             if "public_url" in original_dataset:
                 fdo.addEntry(
@@ -659,6 +666,12 @@ class NMRXivRepository(AbstractRepository):
                 and "hasBioChemEntityPart" in bioschema_study["about"]
             ):
                 for part in bioschema_study["about"]["hasBioChemEntityPart"]:
+                    if not part or part is None:
+                        logger.debug(
+                            f"The provided part is empty. See {bioschema_study['@id']}"
+                        )
+                        continue
+
                     value: dict = {}
 
                     if (

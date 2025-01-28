@@ -25,11 +25,13 @@ from nmr_FAIR_DOs.domain.dataType import extractDataTypeNameFromPID
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
 
-logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler(f"{__name__}.log")
+fh.setLevel(logging.DEBUG)
+logger.addHandler(fh)
 
-always_as_list = ["isMetadataFor", "hasMetadata"]
+always_as_list = ["isMetadataFor", "hasMetadata", "contact"]
 
 
 async def _generate_elastic_JSON_from_PIDRecord(pidRecord):
@@ -45,21 +47,28 @@ async def _generate_elastic_JSON_from_PIDRecord(pidRecord):
             value_to_add (str): The value to add to the result
         """
         if human_readable_key in result:
-            if isinstance(result[human_readable_key], list):
+            if isinstance(
+                result[human_readable_key], list
+            ):  # if the value is already a list
                 result[human_readable_key].append(
                     value_to_add
                 )  # add the value to the existing list
             else:
-                result[human_readable_key] = [
+                result[
+                    human_readable_key
+                ] = [  # create a list with the existing value and the new value
                     result[human_readable_key],
                     value_to_add,
                 ]  # create a list with the existing value and the new value
         elif (
-            human_readable_key in always_as_list and not isinstance(value_to_add, list)
-        ):  # for some keys, the value should always be a list (e.g. isMetadataFor, hasMetadata). Ensure that the value is not a list to avoid creating a list of lists
+            human_readable_key in always_as_list
+        ):  # for some keys, the value should always be a list (e.g. isMetadataFor, hasMetadata).
+            logger.debug(
+                f"Adding {human_readable_key} as list to result as it is in always_as_list"
+            )
             result[human_readable_key] = [value_to_add]  # create a list with the value
         else:
-            result[human_readable_key] = value_to_add  # add the value to the result
+            result[human_readable_key] = value_to_add  # create a list with the value
 
     # Extract the entries from the PID record
     for attribute, value in pidRecord.getEntries().items():
@@ -70,6 +79,9 @@ async def _generate_elastic_JSON_from_PIDRecord(pidRecord):
                     i.value, dict
                 ):  # if the value of the PIDRecordEntry is a dict
                     for k, v in i.value.items():  # iterate over the dict
+                        if v is None:  # if the value is None, continue
+                            continue
+
                         kString = f"{key}.{await extractDataTypeNameFromPID(k)}"  # create a key string by concatenating the key and the extracted data type name from the PID
                         addToResult(
                             kString, v
@@ -116,6 +128,21 @@ class ElasticsearchConnector:
         if self._client.indices.exists(index=indexName):
             logger.info("Index " + indexName + " already exists")
         else:
+            # mappings = {
+            #     "mappings": {
+            #         "properties": {
+            #             "hasMetadata": {
+            #                 "type": "array",
+            #                 "coerce": True,
+            #             },
+            #             "isMetadataFor": {
+            #                 "type": "array",
+            #                 "coerce": True,
+            #             },
+            #         }
+            #     }
+            # }
+
             self._client.indices.create(index=indexName)
             logger.info("Created index " + indexName)
 
