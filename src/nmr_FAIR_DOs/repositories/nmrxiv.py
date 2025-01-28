@@ -24,7 +24,12 @@ from typing import Callable, Any
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
-from nmr_FAIR_DOs.utils import encodeInBase64, fetch_data, parseDateTime
+from nmr_FAIR_DOs.utils import (
+    encodeInBase64,
+    fetch_data,
+    parseDateTime,
+    parseSPDXLicenseURL,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -89,11 +94,11 @@ class NMRXivRepository(AbstractRepository):
         )[0]
 
         if first_letter_type_indicator == "D":
-            return self._mapDatasetToPIDRecord(resource)
+            return await self._mapDatasetToPIDRecord(resource)
         elif first_letter_type_indicator == "S":
-            return self._mapSampleToPIDRecord(resource, addEntries)
+            return await self._mapSampleToPIDRecord(resource, addEntries)
         elif first_letter_type_indicator == "P":
-            return self._mapProjectToPIDRecord(resource, addEntries)
+            return await self._mapProjectToPIDRecord(resource, addEntries)
         else:
             raise ValueError(
                 "Resource is neither a dataset nor a sample nor a project.", resource
@@ -259,7 +264,7 @@ class NMRXivRepository(AbstractRepository):
             "bioschema": self._removeDescription(bioschema),
         }
 
-    def _mapGenericInfo2PIDRecord(self, resource) -> PIDRecord:
+    async def _mapGenericInfo2PIDRecord(self, resource) -> PIDRecord:
         """
         Maps generic information to a PID record.
 
@@ -345,14 +350,13 @@ class NMRXivRepository(AbstractRepository):
             ):
                 fdo.addEntry(
                     "21.T11148/2f314c8fe5fb6a0063a8",
-                    "https://spdx.org/licenses/"
-                    + original_resource["license"]["spdx_id"],
+                    await parseSPDXLicenseURL(original_resource["license"]["spdx_id"]),
                     "license",
                 )
             elif "license" in bioschema_resource:
                 fdo.addEntry(
                     "21.T11148/2f314c8fe5fb6a0063a8",
-                    bioschema_resource["license"],
+                    await parseSPDXLicenseURL(bioschema_resource["license"]),
                     "license",
                 )
 
@@ -400,7 +404,7 @@ class NMRXivRepository(AbstractRepository):
                 f"Error mapping generic info to FAIR-DO: {str(e)}", resource
             )
 
-    def _mapDatasetToPIDRecord(self, dataset: dict) -> PIDRecord:
+    async def _mapDatasetToPIDRecord(self, dataset: dict) -> PIDRecord:
         original_dataset = dataset["original"]
         bioschema_dataset = dataset["bioschema"]
 
@@ -418,7 +422,7 @@ class NMRXivRepository(AbstractRepository):
 
         try:
             logger.info(f"mapping dataset to FAIR-DO: {bioschema_dataset["@id"]}")
-            fdo = self._mapGenericInfo2PIDRecord(dataset)
+            fdo = await self._mapGenericInfo2PIDRecord(dataset)
 
             fdo.addEntry(
                 "21.T11969/a00985b98dac27bd32f8",
@@ -518,6 +522,50 @@ class NMRXivRepository(AbstractRepository):
                         logger.error(f"Error mapping variable {variable}: {str(e)}")
                         raise ValueError(f"Error mapping variable {variable}: {str(e)}")
 
+            if "isPartOf" in bioschema_dataset:
+                if isinstance(bioschema_dataset["isPartOf"], list):
+                    for part in bioschema_dataset["isPartOf"]:
+                        if "name" in part:
+                            fdo.addEntry(
+                                "21.T11969/d15381199a44a16dc88d",
+                                part["name"],
+                                "characterizedCompound",
+                            )
+                        if "hasBioChemEntityPart" in part:
+                            value = {}
+                            if (
+                                "molecularWeight" in part
+                                and part["molecularWeight"] is not None
+                            ):
+                                value["21.T11969/6c4d3deac9a49b65886a"] = float(
+                                    part["molecularWeight"]
+                                )
+                            if "url" in part and part["url"] is not None:
+                                value["21.T11969/f9cb9b53273ce0da7739"] = part["url"]
+
+                            if len(value) > 0:
+                                fdo.addEntry(
+                                    "21.T11969/d15381199a44a16dc88d",
+                                    value,
+                                    "characterizedCompound",
+                                )
+
+                            if "chemicalFormula" in part["hasBioChemEntityPart"]:
+                                formula = part["hasBioChemEntityPart"][
+                                    "chemicalFormula"
+                                ]
+                                if (
+                                    formula is not None
+                                    and formula != ""
+                                    and len(formula) > 1
+                                ):  # Check for meaningful formula
+                                    new_name = f"{original_dataset["name"]}-{formula}"
+                                    fdo.deleteEntry("21.T11969/6ae999552a0d2dca14d6")
+                                    fdo.addEntry(
+                                        "21.T11148/6ae999552a0d2dca14d6",
+                                        new_name,
+                                        "name",
+                                    )
             # fdo.addEntry(
             #     "21.T11969/7a19f6d5c8e63dd6bfcb",
             #     original_dataset["measurementTechnique"]["@id"],
@@ -545,7 +593,7 @@ class NMRXivRepository(AbstractRepository):
             logger.error(f"Error mapping dataset to FAIR-DO: {str(e)}", dataset)
             raise ValueError(f"Error mapping dataset to FAIR-DO: {str(e)}", dataset)
 
-    def _mapSampleToPIDRecord(
+    async def _mapSampleToPIDRecord(
         self,
         sample: dict,
         addEntries: Callable[
@@ -591,7 +639,7 @@ class NMRXivRepository(AbstractRepository):
 
         logger.info("mapping sample to FAIR-DO", sample)
         try:
-            fdo = self._mapGenericInfo2PIDRecord(sample)
+            fdo = await self._mapGenericInfo2PIDRecord(sample)
 
             fdo.addEntry(
                 "21.T11969/a00985b98dac27bd32f8",
@@ -758,6 +806,26 @@ class NMRXivRepository(AbstractRepository):
                         ),
                     ]
 
+                    # Add the preview image(s) to the dataset, if available
+                    images = fdo.getEntry("21.T11148/7fdada5846281ef5d461")
+                    if images is not None and isinstance(images, list):
+                        for image in images:
+                            datasetEntries.append(
+                                PIDRecordEntry(
+                                    "21.T11148/7fdada5846281ef5d461",
+                                    image,
+                                    "locationPreview",
+                                )
+                            )
+                    elif images is not None and isinstance(images, str):
+                        datasetEntries.append(
+                            PIDRecordEntry(
+                                "21.T11148/7fdada5846281ef5d461",
+                                images,
+                                "locationPreview",
+                            )
+                        )
+
                     # TODO: Add formula to name or topic
 
                     if len(compoundEntries) > 0:
@@ -823,7 +891,7 @@ class NMRXivRepository(AbstractRepository):
             logger.error(f"Error mapping sample to FAIR-DO: {str(e)}", sample)
             raise ValueError(f"Error mapping sample to FAIR-DO: {str(e)}", sample)
 
-    def _mapProjectToPIDRecord(
+    async def _mapProjectToPIDRecord(
         self,
         project: dict,
         addEntries: Callable[
@@ -845,7 +913,7 @@ class NMRXivRepository(AbstractRepository):
 
         logger.info("mapping project to FAIR-DO", project)
         try:
-            fdo = self._mapGenericInfo2PIDRecord(project)
+            fdo = await self._mapGenericInfo2PIDRecord(project)
 
             fdo.addEntry(
                 "21.T11969/a00985b98dac27bd32f8",

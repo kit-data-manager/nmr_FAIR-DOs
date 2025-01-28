@@ -14,17 +14,20 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import base64
 import asyncio
+import base64
 import json
 import logging
 import os.path
 from datetime import datetime
 
 import aiohttp
+
 from nmr_FAIR_DOs.env import CACHE_DIR
 
 logger = logging.getLogger(__name__)
+
+known_licenses: dict[str, str] = {}
 
 
 async def fetch_data(url: str, forceFresh: bool = False) -> dict:
@@ -183,3 +186,64 @@ def parseDateTime(text: str) -> datetime:
         pass
 
     raise ValueError("Could not parse datetime from text " + text)
+
+
+async def parseSPDXLicenseURL(input_str: str) -> str:
+    """
+    Parses a license URL to an SPDX license url.
+
+    Args:
+        input_str (str): The license URL to parse
+
+    Returns:
+        str: The SPDX license URL
+    """
+    spdx_base_url = "https://spdx.org/licenses/"
+    format = "json"
+
+    if input_str in known_licenses:
+        logger.debug(
+            f"Using cached license URL for {input_str}: {known_licenses[input_str]}"
+        )
+        return known_licenses[input_str]
+
+    # Fetch the list of licenses once
+    licenses = await fetch_data(f"{spdx_base_url}licenses.json")
+    licenses = licenses["licenses"]
+
+    for license in licenses:  # iterate over the licenses
+        url = f"{spdx_base_url}{license['licenseId']}.{format}"  # create the URL
+
+        if (
+            input_str.lower() == license["reference"].lower()
+        ):  # check if the input string is the reference (e.g. https://spdx.org/licenses/MIT.html)
+            known_licenses[input_str] = url
+            return url
+        elif (
+            input_str.lower() in license["details"].lower()
+        ):  # check if the input string is in the details (e.g. https://spdx.org/licenses/MIT.json)
+            known_licenses[input_str] = url
+            return url
+        elif (
+            input_str.lower() == license["licenseId"].lower()
+        ):  # check if the input string is the license ID (e.g. MIT)
+            known_licenses[input_str] = url
+            return url
+        elif (
+            input_str.lower() in license["seeAlso"]
+        ):  # check if the input string is in the seeAlso (e.g. https://opensource.org/license/mit/)
+            known_licenses[input_str] = url
+            return url
+        elif (
+            input_str.lower() == license["name"].lower()
+        ):  # check if the input string is in the name (e.g. MIT License)
+            known_licenses[input_str] = url
+            return url
+        elif input_str == str(
+            license["referenceNumber"]
+        ):  # check if the input string is the reference number (e.g. 1)
+            known_licenses[input_str] = url
+            return url
+
+    logger.warning(f"Could not parse license URL {input_str}")
+    return input_str

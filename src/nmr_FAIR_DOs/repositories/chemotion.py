@@ -22,7 +22,13 @@ from typing import Callable
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
-from nmr_FAIR_DOs.utils import fetch_data, encodeInBase64, fetch_multiple, parseDateTime
+from nmr_FAIR_DOs.utils import (
+    fetch_data,
+    encodeInBase64,
+    fetch_multiple,
+    parseDateTime,
+    parseSPDXLicenseURL,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -96,9 +102,9 @@ class ChemotionRepository(AbstractRepository):
         )
 
         if resource["@type"] == "Dataset":
-            return self._mapDataset2PIDRecord(resource)
+            return await self._mapDataset2PIDRecord(resource)
         elif resource["@type"] == "Study":
-            return self._mapStudy2PIDRecord(resource, addEntries)
+            return await self._mapStudy2PIDRecord(resource, addEntries)
         else:
             raise ValueError("Invalid resource from Chemotion repository.")
 
@@ -335,7 +341,7 @@ class ChemotionRepository(AbstractRepository):
         return fdo
 
     @staticmethod
-    def _mapDataset2PIDRecord(dataset) -> PIDRecord:
+    async def _mapDataset2PIDRecord(dataset) -> PIDRecord:
         """
         Maps a dataset to a PID record.
 
@@ -379,7 +385,9 @@ class ChemotionRepository(AbstractRepository):
                 )
 
             fdo.addEntry(
-                "21.T11148/2f314c8fe5fb6a0063a8", dataset["license"], "license"
+                "21.T11148/2f314c8fe5fb6a0063a8",
+                await parseSPDXLicenseURL(dataset["license"]),
+                "license",
             )
 
             # entries.append({
@@ -400,7 +408,7 @@ class ChemotionRepository(AbstractRepository):
             raise e
 
     @staticmethod
-    def _mapStudy2PIDRecord(
+    async def _mapStudy2PIDRecord(
         study,
         addEntries: Callable[
             [str, list[PIDRecordEntry], Callable[[str], None] | None], str
@@ -434,7 +442,7 @@ class ChemotionRepository(AbstractRepository):
 
             fdo.addEntry(
                 "21.T11148/2f314c8fe5fb6a0063a8",
-                study["includedInDataCatalog"]["license"],
+                await parseSPDXLicenseURL(study["includedInDataCatalog"]["license"]),
                 "license",
             )
 
