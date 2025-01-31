@@ -210,13 +210,13 @@ class ChemotionRepository(AbstractRepository):
             "digitalObjectType",
         )
 
-        fdo.addEntry(
-            "21.T11148/a753134738da82809fc1",
-            chemotion_content["publisher"][
-                "url"
-            ],  # TODO: Refer to FAIR-DO of the repository (via Handle PID)
-            "hadPrimarySource",
-        )
+        # fdo.addEntry(
+        #     "21.T11148/a753134738da82809fc1",
+        #     chemotion_content["publisher"][
+        #         "url"
+        #     ],  # TODO: Refer to FAIR-DO of the repository (via Handle PID)
+        #     "hadPrimarySource",
+        # )
 
         fdo.addEntry(
             "21.T11148/b8457812905b83046284",
@@ -629,3 +629,50 @@ class ChemotionRepository(AbstractRepository):
         except Exception as e:
             print("Error mapping study to FAIR-DO", study, e)
             raise e
+
+    def getRepositoryFDO(self) -> PIDRecord:
+        fdo = PIDRecord(encodeInBase64(self._baseURL))
+        fdo.addEntry(
+            "21.T11148/076759916209e5d62bd5",
+            "21.T11148/b9b76f887845e32d29f7",  # TODO: get the correct KIP PID; currently HelmholtzKIP
+            "Kernel Information Profile",
+        )
+        fdo.addEntry(
+            "21.T11148/1c699a5d1b4ad3ba4956",
+            "21.T11969/010acb220a9c2c8c0ee6",  # TODO: text/html for now
+            "digitalObjectType",
+        )
+
+        fdo.addEntry(
+            "21.T11148/b8457812905b83046284",
+            self._baseURL,
+            "digitalObjectLocation",
+        )
+
+        fdo.addEntry(
+            "21.T11148/8710d753ad10f371189b",
+            self._baseURL,
+            "landingPageLocation",
+        )
+
+        fdo.addEntry(
+            "21.T11148/aafd5fb4c7222e2d950a",
+            datetime.now().isoformat(),
+            "dateCreated",
+        )
+
+        fdo.addEntry(
+            "21.T11148/6ae999552a0d2dca14d6",
+            "Chemotion Repository",
+            "name",
+        )
+
+        fdo.addEntry(
+            "21.T11148/7fdada5846281ef5d461",
+            "https://www.chemotion-repository.net/images/repo/Chemotion-V1.png",
+            "locationPreview",
+        )
+
+        fdo.addEntry("21.T11969/a00985b98dac27bd32f8", "Repository", "resourceType")
+
+        return fdo

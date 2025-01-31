@@ -145,6 +145,19 @@ class PIDRecord:
         for value in values:
             self.addEntry(key, value, name)
 
+    def updateEntry(self, key: str, value: str | dict, name: str = None):
+        """
+        Updates an entry in the PID record
+        If the entry does not exist, it is added
+
+        :param key:str The key of the entry
+        :param value:str|dict The value of the entry
+        :param name:str The name of the entry (optional)
+        """
+        entry = PIDRecordEntry(key, value, name)
+        self.deleteEntry(key)
+        self.addPIDRecordEntry(entry)
+
     def getEntries(self) -> dict:
         """
         Returns the entries of the PID record
@@ -194,7 +207,7 @@ class PIDRecord:
             raise ValueError("Key must not be None")
 
         if key in self._entries:
-            if value is None:
+            if value is None:  # Delete all entries with the given key
                 del self._entries[key]
             else:
                 self._entries[key] = [

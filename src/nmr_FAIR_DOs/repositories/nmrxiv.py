@@ -295,24 +295,6 @@ class NMRXivRepository(AbstractRepository):
                 "digitalObjectType",
             )
 
-            fdo.addEntry(
-                "21.T11148/a753134738da82809fc1",
-                self._baseURL,  # TODO: Refer to FAIR-DO of the repository (via Handle PID)
-                "hadPrimarySource",
-            )
-
-            # fdo.addEntry(
-            #     "21.T11148/b8457812905b83046284",
-            #     fdo.getPID(),
-            #     "digitalObjectLocation"
-            # )
-            #
-            # fdo.addEntry(
-            #     "21.T11148/8710d753ad10f371189b",
-            #     fdo.getPID(),
-            #     "landingPageLocation",
-            # )
-
             if "created_at" in original_resource:
                 fdo.addEntry(
                     "21.T11148/aafd5fb4c7222e2d950a",
@@ -526,22 +508,25 @@ class NMRXivRepository(AbstractRepository):
                 if isinstance(bioschema_dataset["isPartOf"], list):
                     for part in bioschema_dataset["isPartOf"]:
                         if "name" in part:
-                            fdo.addEntry(
-                                "21.T11969/d15381199a44a16dc88d",
-                                part["name"],
-                                "characterizedCompound",
-                            )
+                            new_name = f"{original_dataset["name"]}-{part["name"]}"
+                            fdo.updateEntry("21.T11148/6ae999552a0d2dca14d6", new_name)
                         if "hasBioChemEntityPart" in part:
+                            biochem_part = part["hasBioChemEntityPart"]
                             value = {}
                             if (
-                                "molecularWeight" in part
-                                and part["molecularWeight"] is not None
+                                "molecularWeight" in biochem_part
+                                and biochem_part["molecularWeight"] is not None
                             ):
                                 value["21.T11969/6c4d3deac9a49b65886a"] = float(
-                                    part["molecularWeight"]
+                                    biochem_part["molecularWeight"]
                                 )
-                            if "url" in part and part["url"] is not None:
-                                value["21.T11969/f9cb9b53273ce0da7739"] = part["url"]
+                            if (
+                                "url" in biochem_part
+                                and biochem_part["url"] is not None
+                            ):
+                                value["21.T11969/f9cb9b53273ce0da7739"] = biochem_part[
+                                    "url"
+                                ]
 
                             if len(value) > 0:
                                 fdo.addEntry(
@@ -550,10 +535,8 @@ class NMRXivRepository(AbstractRepository):
                                     "characterizedCompound",
                                 )
 
-                            if "chemicalFormula" in part["hasBioChemEntityPart"]:
-                                formula = part["hasBioChemEntityPart"][
-                                    "chemicalFormula"
-                                ]
+                            if "chemicalFormula" in biochem_part:
+                                formula = biochem_part["chemicalFormula"]
                                 if (
                                     formula is not None
                                     and formula != ""
@@ -1075,3 +1058,50 @@ class NMRXivRepository(AbstractRepository):
         removeRecursively("studies")
 
         return resource
+
+    def getRepositoryFDO(self) -> PIDRecord:
+        fdo = PIDRecord(encodeInBase64(self._baseURL))
+        fdo.addEntry(
+            "21.T11148/076759916209e5d62bd5",
+            "21.T11148/b9b76f887845e32d29f7",  # TODO: get the correct KIP PID; currently HelmholtzKIP
+            "Kernel Information Profile",
+        )
+        fdo.addEntry(
+            "21.T11148/1c699a5d1b4ad3ba4956",
+            "21.T11969/010acb220a9c2c8c0ee6",  # TODO: text/html for now
+            "digitalObjectType",
+        )
+
+        fdo.addEntry(
+            "21.T11148/b8457812905b83046284",
+            self._baseURL,
+            "digitalObjectLocation",
+        )
+
+        fdo.addEntry(
+            "21.T11148/8710d753ad10f371189b",
+            self._baseURL,
+            "landingPageLocation",
+        )
+
+        fdo.addEntry(
+            "21.T11148/7fdada5846281ef5d461",
+            "https://avatars.githubusercontent.com/u/65726315",  # TODO: get the correct location preview
+            "locationPreview",
+        )
+
+        fdo.addEntry(
+            "21.T11148/aafd5fb4c7222e2d950a",
+            datetime.now().isoformat(),
+            "dateCreated",
+        )
+
+        fdo.addEntry(
+            "21.T11148/6ae999552a0d2dca14d6",
+            "NMRXiv",
+            "name",
+        )
+
+        fdo.addEntry("21.T11969/a00985b98dac27bd32f8", "Repository", "resourceType")
+
+        return fdo

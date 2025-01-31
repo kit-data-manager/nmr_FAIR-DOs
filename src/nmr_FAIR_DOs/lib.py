@@ -247,12 +247,25 @@ async def create_pidRecords_from_resources(
     """
     logger.info(f"Creating PID records for the {len(resources)} resources")
 
+    # get repository FDO
+    repo_FDO, isNew = await _getRepoFDO(repo)
+
     # Extract PID records from the resources
     for resource in resources:
         logger.debug(f"Extracting PID record from {str(resource)[:100]}")
         try:
             pid_record = await repo.extractPIDRecordFromResource(resource, addEntries)
             if pid_record is not None and isinstance(pid_record, PIDRecord):
+                pid_record.addEntry(
+                    "21.T11148/a753134738da82809fc1",
+                    repo_FDO.getPID(),
+                    "hadPrimarySource",
+                )
+                repo_FDO.addEntry(
+                    "21.T11148/4fe7cde52629b61e3b82",
+                    pid_record.getPID(),
+                    "isMetadataFor",
+                )
                 records_to_create.append(pid_record)
             else:
                 logger.error(f"No PID record extracted from {resource}")
@@ -277,49 +290,7 @@ async def create_pidRecords_from_resources(
     # Add entries from future entries to PID records
     while len(future_entries) > 0:  # while there are future entries
         entry = future_entries.pop()  # get the first entry
-
-        # if entry in visited_entries:  # if the entry was already visited
-        #     logger.error(
-        #         f"Error adding entries to PID record with PID {entry['presumed_pid']} from future entries. Duplicate detected",
-        #         entry,
-        #         visited_entries,
-        #     )
-        #     errors.append(
-        #         {
-        #             "url": entry["presumed_pid"],
-        #             "error": "Error adding entries to PID record with PID from future entries (duplicate detected)",
-        #             "json": json.dumps(entry),
-        #             "timestamp": datetime.now().isoformat(),
-        #         }
-        #     )
-        # else:
-        # if entry["presumed_pid"] in visited_pids:  # if the PID was already visited
-        #     # Check if any item in entry["entries"] is in visited_pids[entry["presumed_pid"]] to avoid duplicates
-        #     if any( # if there are duplicates
-        #         any(
-        #             visited_entry["key"] == item["key"] # Check if the key is the same
-        #             and visited_entry["value"] == item["value"] # Check if the value is the same
-        #             for visited_entry in visited_pids[entry["presumed_pid"]] # iterate over the already visited entries
-        #         )
-        #         for item in entry["entries"] # iterate over the future entries
-        #     ):  # if there are duplicates
-        #         logger.error(
-        #             f"Error adding entries to PID record with PID {entry['presumed_pid']} from future entries. Duplicate detected",
-        #             entry,
-        #             visited_pids[entry["presumed_pid"]],
-        #         )
-        #         errors.append(
-        #             {
-        #                 "url": entry["presumed_pid"],
-        #                 "error": "Error adding entries to PID record with PID from future entries (duplicate detected)",
-        #                 "json": json.dumps(entry),
-        #                 "visited": visited_pids[entry["presumed_pid"]],
-        #                 "timestamp": datetime.now().isoformat(),
-        #             }
-        #         )
-        # else:
         try:  # try to add the entries to the PID record
-            # visited_pids.append(entry["presumed_pid"])
             pid = entry["presumed_pid"]
             entries = entry["entries"]
 
@@ -328,20 +299,7 @@ async def create_pidRecords_from_resources(
                 entries,
             )
 
-            # visited_entries.append(entry)
-            # if pid in visited_pids:
-            #     visited_pids[pid].extend(entries)
-            # else:
-            #     visited_pids[pid] = entries
-
             addEntries(pid, entries, None, False)
-
-            # visited_pids[entry["presumed_pid"]] = entry["entries"]
-            # logger.info(
-            #     f"Adding entries to PID record with PID {entry['presumed_pid']} from future entries.",
-            #     entry,
-            # )
-            # addEntries(entry["presumed_pid"], entry["entries"])
         except Exception as e:
             logger.error(
                 f"Error adding entries to PID record with PID {entry['presumed_pid']} from future entries. This was the second and last attempt.",
@@ -355,6 +313,14 @@ async def create_pidRecords_from_resources(
                     "timestamp": datetime.now().isoformat(),
                 }
             )
+
+    if isNew:
+        logger.info(f"Creating repository FDO with preliminary PID {repo_FDO.getPID()}")
+        records_to_create.append(repo_FDO)
+    else:
+        logger.info(f"Updating repository FDO with actual PID {repo_FDO.getPID()}")
+        tpm.updatePIDRecord(repo_FDO)
+        await elasticsearch.addPIDRecord(repo_FDO)
 
     # write errors to file
     with open("errors_" + repo.repositoryID.replace("/", "_") + ".json", "w") as f:
@@ -567,6 +533,39 @@ async def _createRecordsToCreate(dryrun: bool) -> list[PIDRecord]:
             deduplicated_records
         )  # add PID records to the list of PID records
         return deduplicated_records
+
+
+async def _getRepoFDO(repo: AbstractRepository):
+    """
+    Get the repository FDO for the given repository.
+
+    Args:
+        repo (AbstractRepository): The repository to get the repository FDO for
+
+    Returns:
+        PIDRecord: The repository FDO
+        bool: Whether the repository FDO is newly created (True) or has to be updated (False)
+    """
+    new_repo_FDO = repo.getRepositoryFDO()
+    try:
+        existing_repo_FDO_pid = elasticsearch.searchForPID(new_repo_FDO.getPID())
+        actual_repoFDO_pid = None
+        if existing_repo_FDO_pid is not None:
+            existing_repo_FDO = tpm.getPIDRecord(existing_repo_FDO_pid)
+            if existing_repo_FDO is not None:
+                actual_repoFDO_pid = existing_repo_FDO.getPID()
+                logger.info(
+                    f"Found existing repository FDO with PID {actual_repoFDO_pid}"
+                )
+                existing_repo_FDO.merge(new_repo_FDO)
+                return existing_repo_FDO, False
+                # tpm.updatePIDRecord(existing_repo_FDO) # TODO: update PID record in the Typed PID-Maker
+                # await elasticsearch.addPIDRecord(existing_repo_FDO)
+    except Exception as e:
+        logger.info(f"Error getting existing repository FDO: {str(e)}")
+
+    logger.info(f"Creating repository FDO with PID {new_repo_FDO.getPID()}")
+    return new_repo_FDO, True
 
 
 if __name__ == "__main__":

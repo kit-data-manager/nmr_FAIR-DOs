@@ -96,6 +96,16 @@ class AbstractRepository(ABC):
         """
         return NotImplemented
 
+    @abstractmethod
+    def getRepositoryFDO(self) -> PIDRecord:
+        """
+        Define the PID record for the repository.
+
+        Returns:
+            PIDRecord: The PID record for the repository
+        """
+        return NotImplemented
+
     async def extractAll(
         self,
         urls: list[str],

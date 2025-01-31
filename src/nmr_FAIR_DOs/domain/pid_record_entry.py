@@ -34,9 +34,9 @@ class PIDRecordEntry(dict):
     :param name:str The name of the entry (optional)
     """
 
-    key: str
-    value: str | dict
-    name: str
+    key: str = None
+    value: str | dict = None
+    name: str = None
 
     def __init__(self, key: str, value: str | dict, name: str = None):
         """

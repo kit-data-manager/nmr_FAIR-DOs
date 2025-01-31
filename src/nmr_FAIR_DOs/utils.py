@@ -190,60 +190,111 @@ def parseDateTime(text: str) -> datetime:
 
 async def parseSPDXLicenseURL(input_str: str) -> str:
     """
-    Parses a license URL to an SPDX license url.
+    Parses a available_license URL to an SPDX available_license url.
 
     Args:
-        input_str (str): The license URL to parse
+        input_str (str): The available_license URL to parse
 
     Returns:
-        str: The SPDX license URL
+        str: The SPDX available_license URL
     """
-    spdx_base_url = "https://spdx.org/licenses/"
-    format = "json"
+    spdx_base_url = "https://spdx.org/licenses"
+    file_format = "json"
 
     if input_str in known_licenses:
         logger.debug(
-            f"Using cached license URL for {input_str}: {known_licenses[input_str]}"
+            f"Using cached available_license URL for {input_str}: {known_licenses[input_str]}"
         )
         return known_licenses[input_str]
 
     # Fetch the list of licenses once
-    licenses = await fetch_data(f"{spdx_base_url}licenses.json")
-    licenses = licenses["licenses"]
+    available_licenses = await fetch_data(f"{spdx_base_url}/licenses.json")
+    available_licenses = available_licenses["licenses"]
 
-    for license in licenses:  # iterate over the licenses
-        url = f"{spdx_base_url}{license['licenseId']}.{format}"  # create the URL
+    for available_license in available_licenses:  # iterate over the licenses
+        url = f"{spdx_base_url}/{available_license['licenseId']}.{file_format}"  # create the URL
 
         if (
-            input_str.lower() == license["reference"].lower()
+            "reference" in available_license
+            and input_str.lower() == available_license["reference"].lower()
         ):  # check if the input string is the reference (e.g. https://spdx.org/licenses/MIT.html)
             known_licenses[input_str] = url
             return url
         elif (
-            input_str.lower() in license["details"].lower()
+            "details" in available_license
+            and input_str.lower() in available_license["details"].lower()
         ):  # check if the input string is in the details (e.g. https://spdx.org/licenses/MIT.json)
             known_licenses[input_str] = url
             return url
         elif (
-            input_str.lower() == license["licenseId"].lower()
-        ):  # check if the input string is the license ID (e.g. MIT)
+            "licenseId" in available_license
+            and input_str.lower() == available_license["licenseId"].lower()
+        ):  # check if the input string is the available_license ID (e.g. MIT)
             known_licenses[input_str] = url
             return url
         elif (
-            input_str.lower() in license["seeAlso"]
+            "seeAlso" in available_license
+            and checkTextIsSimilar(input_str, available_license["seeAlso"])
         ):  # check if the input string is in the seeAlso (e.g. https://opensource.org/license/mit/)
             known_licenses[input_str] = url
             return url
-        elif (
-            input_str.lower() == license["name"].lower()
+        elif "name" in available_license and checkTextIsSimilar(
+            input_str, available_license["name"]
         ):  # check if the input string is in the name (e.g. MIT License)
             known_licenses[input_str] = url
             return url
-        elif input_str == str(
-            license["referenceNumber"]
+        elif "referenceNumber" in available_license and input_str == str(
+            available_license["referenceNumber"]
         ):  # check if the input string is the reference number (e.g. 1)
             known_licenses[input_str] = url
             return url
 
-    logger.warning(f"Could not parse license URL {input_str}")
+    logger.warning(f"Could not parse available_license URL {input_str}")
     return input_str
+
+
+def checkTextIsSimilar(original: str, target: list[str] | str) -> bool:
+    """
+    Checks if the original text is similar to the target text.
+
+    Args:
+        original (str): The original text
+        target (list[str]|str): The target text or a list of target texts
+
+    Returns:
+        bool: Whether the original text is similar to the target text
+    """
+    if isinstance(target, str):
+        target = [target]
+
+    for t in target:
+        ## remove whitespaces and prefixes from URLs
+        original.replace(" ", "")
+        t.replace(" ", "")
+        original.replace("https://", "")
+        t.replace("https://", "")
+        original.replace("http://", "")
+        t.replace("http://", "")
+
+        ## remove suffixes from URLs (e.g. .json, .html, .rdf, etc) There might be multiple points in the URL so we only remove the last one
+        original = original.rsplit(".", 1)[0]
+        t = t.rsplit(".", 1)[0]
+
+        ## if there is a slash at the end of the URL, remove it
+        if original.endswith("/"):
+            original = original[:-1]
+        if t.endswith("/"):
+            t = t[:-1]
+
+        if original.lower() == t.lower():  # check if the strings are equal
+            return True
+        elif (
+            original.lower() in t.lower()
+        ):  # check if the original string is in the target string
+            return True
+        elif (
+            t.lower() in original.lower()
+        ):  # check if the target string is in the original string
+            return True
+
+    return False
