@@ -370,7 +370,7 @@ class ChemotionRepository(AbstractRepository):
             fdo.addEntry("21.T11148/6ae999552a0d2dca14d6", dataset["name"], "name")
 
             fdo.addEntry(
-                "21.T11148/8710d753ad10f371189b", dataset["url"], "landingPageLocation"
+                "21.T11969/8710d753ad10f371189b", dataset["url"], "landingPageLocation"
             )
 
             fdo.addEntry(
@@ -526,7 +526,7 @@ class ChemotionRepository(AbstractRepository):
                     )
                 if "url" in entry:
                     fdo.addEntry(
-                        "21.T11148/8710d753ad10f371189b",
+                        "21.T11969/8710d753ad10f371189b",
                         entry["url"],
                         "landingPageLocation",
                     )
@@ -650,7 +650,7 @@ class ChemotionRepository(AbstractRepository):
         )
 
         fdo.addEntry(
-            "21.T11148/8710d753ad10f371189b",
+            "21.T11969/8710d753ad10f371189b",
             self._baseURL,
             "landingPageLocation",
         )

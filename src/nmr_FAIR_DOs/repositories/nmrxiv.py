@@ -434,13 +434,13 @@ class NMRXivRepository(AbstractRepository):
 
             if "public_url" in original_dataset:
                 fdo.addEntry(
-                    "21.T11148/8710d753ad10f371189b",
+                    "21.T11969/8710d753ad10f371189b",
                     original_dataset["public_url"],
                     "landingPageLocation",
                 )
             elif "url" in bioschema_dataset:
                 fdo.addEntry(
-                    "21.T11148/8710d753ad10f371189b",
+                    "21.T11969/8710d753ad10f371189b",
                     bioschema_dataset["url"],
                     "landingPageLocation",
                 )
@@ -652,13 +652,13 @@ class NMRXivRepository(AbstractRepository):
 
             if "public_url" in original_study:
                 fdo.addEntry(
-                    "21.T11148/8710d753ad10f371189b",
+                    "21.T11969/8710d753ad10f371189b",
                     original_study["public_url"],
                     "landingPageLocation",
                 )
             elif "url" in bioschema_study:
                 fdo.addEntry(
-                    "21.T11148/8710d753ad10f371189b",
+                    "21.T11969/8710d753ad10f371189b",
                     bioschema_study["url"],
                     "landingPageLocation",
                 )
@@ -926,13 +926,13 @@ class NMRXivRepository(AbstractRepository):
 
             if "public_url" in original_project:
                 fdo.addEntry(
-                    "21.T11148/8710d753ad10f371189b",
+                    "21.T11969/8710d753ad10f371189b",
                     original_project["public_url"],
                     "landingPageLocation",
                 )
             elif "url" in bioschema_project:
                 fdo.addEntry(
-                    "21.T11148/8710d753ad10f371189b",
+                    "21.T11969/8710d753ad10f371189b",
                     bioschema_project["url"],
                     "landingPageLocation",
                 )
@@ -1079,7 +1079,7 @@ class NMRXivRepository(AbstractRepository):
         )
 
         fdo.addEntry(
-            "21.T11148/8710d753ad10f371189b",
+            "21.T11969/8710d753ad10f371189b",
             self._baseURL,
             "landingPageLocation",
         )
