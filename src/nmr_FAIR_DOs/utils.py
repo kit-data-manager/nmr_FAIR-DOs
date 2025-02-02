@@ -286,6 +286,10 @@ def checkTextIsSimilar(original: str, target: list[str] | str) -> bool:
         if t.endswith("/"):
             t = t[:-1]
 
+        ## if its a creative commons license, remove the legalcode part
+        if "creativecommons.org" in original:
+            original = original.replace("/legalcode", "")
+
         if original.lower() == t.lower():  # check if the strings are equal
             return True
         elif (

@@ -220,7 +220,7 @@ class ChemotionRepository(AbstractRepository):
 
         fdo.addEntry(
             "21.T11148/b8457812905b83046284",
-            f"https://doi.org/{chemotion_content["@id"].replace("https://doi.org/", "")}",
+            f"https://dx.doi.org/{chemotion_content["@id"].replace("https://doi.org/", "")}",
             "digitalObjectLocation",
         )
 
@@ -364,7 +364,7 @@ class ChemotionRepository(AbstractRepository):
             fdo = ChemotionRepository._mapGenericInfo2PIDRecord(dataset)
 
             fdo.addEntry(
-                "21.T11969/a00985b98dac27bd32f8", "Dataset", "resourceType"
+                "21.T11969/b736c3898dd1f6603e2c", "Dataset", "resourceType"
             )  # TODO: assign PID to resourceType
 
             fdo.addEntry("21.T11148/6ae999552a0d2dca14d6", dataset["name"], "name")
@@ -396,11 +396,11 @@ class ChemotionRepository(AbstractRepository):
             #     "value": dataset["isPartOf"][0]["about"][0]["hasBioChemEntityPart"]["molecularWeight"]["value"]
             # }
 
-            fdo.addEntry(
-                "21.T11148/82e2503c49209e987740",
-                "TODO",  # TODO: get the correct checksum
-                "checksum",
-            )
+            # fdo.addEntry(
+            #     "21.T11148/82e2503c49209e987740",
+            #     "TODO",  # TODO: get the correct checksum
+            #     "checksum",
+            # )
 
             return fdo
         except Exception as e:
@@ -437,7 +437,7 @@ class ChemotionRepository(AbstractRepository):
             fdo = ChemotionRepository._mapGenericInfo2PIDRecord(study)
 
             fdo.addEntry(
-                "21.T11969/a00985b98dac27bd32f8", "Study", "resourceType"
+                "21.T11969/b736c3898dd1f6603e2c", "Study", "resourceType"
             )  # TODO: assign PID to resourceType
 
             fdo.addEntry(
@@ -446,11 +446,11 @@ class ChemotionRepository(AbstractRepository):
                 "license",
             )
 
-            fdo.addEntry(
-                "21.T11148/82e2503c49209e987740",
-                "TODO",  # TODO: get a correct checksum
-                "checksum",
-            )
+            # fdo.addEntry(
+            #     "21.T11148/82e2503c49209e987740",
+            #     "TODO",  # TODO: get a correct checksum
+            #     "checksum",
+            # )
 
             if (
                 "about" not in study
@@ -639,7 +639,7 @@ class ChemotionRepository(AbstractRepository):
         )
         fdo.addEntry(
             "21.T11148/1c699a5d1b4ad3ba4956",
-            "21.T11969/010acb220a9c2c8c0ee6",  # TODO: text/html for now
+            "21.T11148/010acb220a9c2c8c0ee6",  # TODO: text/html for now
             "digitalObjectType",
         )
 
@@ -673,6 +673,6 @@ class ChemotionRepository(AbstractRepository):
             "locationPreview",
         )
 
-        fdo.addEntry("21.T11969/a00985b98dac27bd32f8", "Repository", "resourceType")
+        fdo.addEntry("21.T11969/b736c3898dd1f6603e2c", "Repository", "resourceType")
 
         return fdo

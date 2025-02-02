@@ -407,13 +407,13 @@ class NMRXivRepository(AbstractRepository):
             fdo = await self._mapGenericInfo2PIDRecord(dataset)
 
             fdo.addEntry(
-                "21.T11969/a00985b98dac27bd32f8",
+                "21.T11969/b736c3898dd1f6603e2c",
                 "Dataset",
                 "resourceType",  # TODO: use PID to refer to the resourceType
             )
 
             if "doi" in original_dataset:
-                url = f"https://doi.org/{original_dataset["doi"].replace("https://doi.org/", "")}"
+                url = f"https://dx.doi.org/{original_dataset["doi"].replace("https://doi.org/", "")}"
                 fdo.addEntry(
                     "21.T11148/b8457812905b83046284",
                     url,
@@ -565,11 +565,11 @@ class NMRXivRepository(AbstractRepository):
             #     "value": dataset["isPartOf"][0]["about"][0]["hasBioChemEntityPart"]["molecularWeight"]["value"]
             # }
 
-            fdo.addEntry(
-                "21.T11148/82e2503c49209e987740",
-                "TODO",  # TODO: get the correct checksum
-                "checksum",
-            )
+            # fdo.addEntry(
+            #     "21.T11148/82e2503c49209e987740",
+            #     "TODO",  # TODO: get the correct checksum
+            #     "checksum",
+            # )
 
             return fdo
         except Exception as e:
@@ -625,7 +625,7 @@ class NMRXivRepository(AbstractRepository):
             fdo = await self._mapGenericInfo2PIDRecord(sample)
 
             fdo.addEntry(
-                "21.T11969/a00985b98dac27bd32f8",
+                "21.T11969/b736c3898dd1f6603e2c",
                 "Study",
                 "resourceType",  # TODO: use PID to refer to the resourceType
             )
@@ -646,7 +646,7 @@ class NMRXivRepository(AbstractRepository):
             else:
                 fdo.addEntry(
                     "21.T11148/b8457812905b83046284",
-                    original_study["doi"],
+                    f"https://dx.doi.org/{original_study["doi"].replace("https://doi.org/", "")}",
                     "digitalObjectLocation",
                 )
 
@@ -685,11 +685,11 @@ class NMRXivRepository(AbstractRepository):
             #     "value": dataset["isPartOf"][0]["about"][0]["hasBioChemEntityPart"]["molecularWeight"]["value"]
             # }
 
-            fdo.addEntry(
-                "21.T11148/82e2503c49209e987740",
-                "TODO",  # TODO: get the correct checksum
-                "checksum",
-            )
+            # fdo.addEntry(
+            #     "21.T11148/82e2503c49209e987740",
+            #     "TODO",  # TODO: get the correct checksum
+            #     "checksum",
+            # )
 
             compoundEntries = []
             if (
@@ -899,7 +899,7 @@ class NMRXivRepository(AbstractRepository):
             fdo = await self._mapGenericInfo2PIDRecord(project)
 
             fdo.addEntry(
-                "21.T11969/a00985b98dac27bd32f8",
+                "21.T11969/b736c3898dd1f6603e2c",
                 "Project",
                 "resourceType",  # TODO: use PID to refer to the resourceType
             )
@@ -920,7 +920,7 @@ class NMRXivRepository(AbstractRepository):
             else:
                 fdo.addEntry(
                     "21.T11148/b8457812905b83046284",
-                    original_project["doi"],
+                    f"https://dx.doi.org/{original_project["doi"].replace("https://doi.org/", "")}",
                     "digitalObjectLocation",
                 )
 
@@ -1068,7 +1068,7 @@ class NMRXivRepository(AbstractRepository):
         )
         fdo.addEntry(
             "21.T11148/1c699a5d1b4ad3ba4956",
-            "21.T11969/010acb220a9c2c8c0ee6",  # TODO: text/html for now
+            "21.T11148/010acb220a9c2c8c0ee6",  # TODO: text/html for now
             "digitalObjectType",
         )
 
@@ -1102,6 +1102,6 @@ class NMRXivRepository(AbstractRepository):
             "name",
         )
 
-        fdo.addEntry("21.T11969/a00985b98dac27bd32f8", "Repository", "resourceType")
+        fdo.addEntry("21.T11969/b736c3898dd1f6603e2c", "Repository", "resourceType")
 
         return fdo

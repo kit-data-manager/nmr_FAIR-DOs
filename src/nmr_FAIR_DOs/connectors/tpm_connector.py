@@ -14,16 +14,20 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import json
 import logging
 from string import Template
 
 import requests
+
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.utils import fetch_multiple
 
-logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+fh = logging.FileHandler(f"{__name__}.log")
+fh.setLevel(logging.DEBUG)
+logger.addHandler(fh)
 
 
 class TPMConnector:
@@ -47,7 +51,7 @@ class TPMConnector:
 
         headers = {"Content-Type": "application/json"}
 
-        content = pidRecord.toJSON()
+        content = self._applyTypeAPIFixes(pidRecord.toJSON())
 
         endpoint = "/api/v1/pit/pid"
 
@@ -84,12 +88,14 @@ class TPMConnector:
                     "FAIR-DO must not be None and must be an instance of PIDRecord"
                 )
 
-            content.append(fairdo.toJSON())
+            content.append(self._applyTypeAPIFixes(fairdo.toJSON()))
 
         endpoint = "/api/v1/pit/pids"
 
         if content is None or len(content) == 0:
             raise ValueError("No content to create due to invalid input")
+
+        logger.debug(json.dumps(content))
 
         # logger.debug(
         #     f"Creating FAIR-DOs at {self._tpm_url + endpoint}",
@@ -98,6 +104,8 @@ class TPMConnector:
         resource_response = requests.post(
             self._tpm_url + endpoint, headers=headers, json=content, timeout=None
         )
+
+        logger.debug(f"Response for URL {self._tpm_url + endpoint}", resource_response)
 
         if resource_response.status_code != 201:
             raise Exception(
@@ -205,5 +213,46 @@ class TPMConnector:
         result = []
         for i in json_records:
             result.append(PIDRecord.fromJSON(i))
+
+        return result
+
+    def _applyTypeAPIFixes(self, content: dict) -> dict:
+        """
+        Applies fixes to the content to match the TPM API
+
+        :param content:dict The content to fix
+
+        :return:dict The fixed content
+        """
+        types_to_fix = {
+            "21.T11969/8710d753ad10f371189b": "landingPageLocation",
+            "21.T11148/f3f0cbaa39fa9966b279": "identifier",
+            "21.T11969/7a19f6d5c8e63dd6bfcb": "NMR_Method",
+            "21.T11148/7fdada5846281ef5d461": "locationPreview/Sample",
+        }
+
+        if content is None or not isinstance(content, dict):
+            raise ValueError("Content must not be None and must be a dict")
+
+        result = {"pid": content["pid"], "entries": {}}
+
+        for key, value in content["entries"].items():
+            fix_name = types_to_fix.get(key)
+
+            if fix_name is not None:
+                logger.debug(f"Fixing content for type {key} to {fix_name}")
+                values = []
+                for item in value:
+                    newEntry = {
+                        "key": item["key"],
+                        "value": '{"' + fix_name + '": "' + item["value"] + '"}',
+                    }
+                    # logger.debug(f"Fixed content for type {item["key"]} to {newEntry}")
+                    values.append(newEntry)
+                result["entries"][key] = values
+                logger.debug(f"Fixed content for type {key} to {values}")
+            else:
+                result["entries"][key] = value
+                logger.debug(f"No fix for type {key}")
 
         return result
