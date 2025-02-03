@@ -28,6 +28,7 @@ ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
 ELASTICSEARCH_INDEX = os.getenv("ELASTICSEARCH_INDEX")
 ELASTICSEARCH_APIKEY = os.getenv("ELASTICSEARCH_APIKEY")
 CACHE_DIR = os.getenv("CACHE_DIR")
+TERMINOLOGY_URL = os.getenv("TERMINOLOGY_URL")
 
 # Check if the environment variables are set
 if not TPM_URL:
@@ -44,6 +45,8 @@ if not ELASTICSEARCH_APIKEY:
     raise Exception("ELASTICSEARCH_APIKEY is not set")
 if not CACHE_DIR:
     raise Exception("CACHE_DIR is not set")
+if not TERMINOLOGY_URL:
+    raise Exception("TERMINOLOGY_URL is not set")
 
 # Check if the cache directory exists
 if not os.path.isdir(CACHE_DIR):
@@ -58,3 +61,5 @@ if NMRXIV_BASE_URL.endswith("/"):
     NMRXIV_BASE_URL = NMRXIV_BASE_URL[:-1]
 if ELASTICSEARCH_URL.endswith("/"):
     ELASTICSEARCH_URL = ELASTICSEARCH_URL[:-1]
+if TERMINOLOGY_URL.endswith("/"):
+    TERMINOLOGY_URL = TERMINOLOGY_URL[:-1]

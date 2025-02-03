@@ -22,6 +22,7 @@ from enum import Enum
 from typing import Callable
 
 from nmr_FAIR_DOs.connectors.elasticsearch import ElasticsearchConnector
+from nmr_FAIR_DOs.connectors.terminology import Terminology
 from nmr_FAIR_DOs.connectors.tpm_connector import TPMConnector
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
@@ -32,6 +33,7 @@ from nmr_FAIR_DOs.env import (
     ELASTICSEARCH_URL,
     ELASTICSEARCH_APIKEY,
     ELASTICSEARCH_INDEX,
+    TERMINOLOGY_URL,
 )
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
 from nmr_FAIR_DOs.repositories.chemotion import ChemotionRepository
@@ -45,7 +47,8 @@ logger.addHandler(fh)
 
 tpm = TPMConnector(TPM_URL)
 chemotion_repo = ChemotionRepository(CHEMOTION_BASE_URL)
-nmrxiv_repo = NMRXivRepository(NMRXIV_BASE_URL, False)
+terminology = Terminology(TERMINOLOGY_URL)
+nmrxiv_repo = NMRXivRepository(NMRXIV_BASE_URL, terminology, False)
 elasticsearch = ElasticsearchConnector(
     ELASTICSEARCH_URL, ELASTICSEARCH_APIKEY, ELASTICSEARCH_INDEX
 )

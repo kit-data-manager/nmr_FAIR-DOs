@@ -210,14 +210,6 @@ class ChemotionRepository(AbstractRepository):
             "digitalObjectType",
         )
 
-        # fdo.addEntry(
-        #     "21.T11148/a753134738da82809fc1",
-        #     chemotion_content["publisher"][
-        #         "url"
-        #     ],  # TODO: Refer to FAIR-DO of the repository (via Handle PID)
-        #     "hadPrimarySource",
-        # )
-
         fdo.addEntry(
             "21.T11148/b8457812905b83046284",
             f"https://dx.doi.org/{chemotion_content["@id"].replace("https://doi.org/", "")}",
@@ -334,8 +326,6 @@ class ChemotionRepository(AbstractRepository):
                 parseDateTime(chemotion_content["dateCreated"]).isoformat(),
                 "dateCreated",
             )
-        # else:
-        # raise ValueError("No dateCreated found in document", json["@id"]) TODO: WHY DO SO MANY ENTRIES NOT HAVE A DATE_CREATED?
 
         logger.debug(f"Mapped generic info to FAIR-DO: {fdo.getPID()}")
         return fdo
@@ -389,12 +379,6 @@ class ChemotionRepository(AbstractRepository):
                 await parseSPDXLicenseURL(dataset["license"]),
                 "license",
             )
-
-            # entries.append({
-            #     "key": "21.T11969/d15381199a44a16dc88d",
-            #     "name": "characterizedCompound",
-            #     "value": dataset["isPartOf"][0]["about"][0]["hasBioChemEntityPart"]["molecularWeight"]["value"]
-            # }
 
             # fdo.addEntry(
             #     "21.T11148/82e2503c49209e987740",
@@ -492,34 +476,9 @@ class ChemotionRepository(AbstractRepository):
                                 "characterizedCompound",
                             )
                         else:
-                            logger.error(
+                            logger.warn(
                                 f"The provided part does not contain a molecularWeight or url: {part}"
                             )
-                            # logger.error("The provided part does not contain a molecularWeight ", part)
-                            # raise ValueError("The provided part does not contain a molecularWeight ", part)
-
-                    # part = entry["hasBioChemEntityPart"]
-                    # value: dict = {}
-                    #
-                    # if "molecularWeight" in part:
-                    #     value["21.T11969/6c4d3deac9a49b65886a"] = part["molecularWeight"]["value"]
-                    # if "url" in entry:
-                    #     value["21.T11969/f9cb9b53273ce0da7739"] = part["url"]
-                    #
-                    # if len(value) > 0:
-                    #     fdo.addEntry(
-                    #         "21.T11969/d15381199a44a16dc88d",
-                    #         json.dumps(value),
-                    #         "characterizedCompound",
-                    #     )
-                    # else:
-                    #     logger.error("The provided part does not contain a molecularWeight ", part)
-
-                    # fdo.addEntry(
-                    #     "21.T11969/d15381199a44a16dc88d",
-                    #     entry["hasBioChemEntityPart"]["molecularWeight"]["value"],
-                    #     "characterizedCompound",
-                    # )
                 if "name" in entry:
                     fdo.addEntry(
                         "21.T11148/6ae999552a0d2dca14d6", entry["name"], "name"
@@ -602,21 +561,6 @@ class ChemotionRepository(AbstractRepository):
                                 datasetEntries,
                                 lambda pid: add_metadata_entry(fdo.getPID(), pid),
                             )
-
-                            # onsuccess = lambda pid: add_metadata_entry(
-                            #     fdo.getPID(), pid
-                            # )
-                            # addEntries(presumedDatasetID, datasetEntries, onsuccess)
-                            ## define a lambda function that uses a string parameter to add an entry to fdo
-                            # onsuccess = lambda pid: fdo.addEntry("21.T11148/4fe7cde52629b61e3b82", value, "isMetadataFor")
-                            #
-                            # datasetPID = addEntries(presumedDatasetID, datasetEntries, onsuccess)
-                            # if datasetPID is not None:
-                            #     fdo.addEntry(
-                            #         "21.T11148/4fe7cde52629b61e3b82",
-                            #         datasetPID,
-                            #         "isMetadataFor",
-                            #     )
                         except Exception as e:
                             logger.error(
                                 "Error adding dataset reference to study",

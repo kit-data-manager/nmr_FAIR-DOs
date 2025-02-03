@@ -26,6 +26,9 @@ import aiohttp
 from nmr_FAIR_DOs.env import CACHE_DIR
 
 logger = logging.getLogger(__name__)
+fh = logging.FileHandler(f"{__name__}.log")
+fh.setLevel(logging.DEBUG)
+logger.addHandler(fh)
 
 known_licenses: dict[str, str] = {}
 
@@ -232,10 +235,10 @@ async def parseSPDXLicenseURL(input_str: str) -> str:
         ):  # check if the input string is the available_license ID (e.g. MIT)
             known_licenses[input_str] = url
             return url
-        elif (
-            "seeAlso" in available_license
-            and checkTextIsSimilar(input_str, available_license["seeAlso"])
-        ):  # check if the input string is in the seeAlso (e.g. https://opensource.org/license/mit/)
+        elif "seeAlso" in available_license and checkTextIsSimilar(
+            input_str, available_license["seeAlso"]
+        ):
+            # check if the input string is in the seeAlso list (e.g. [https://opensource.org/license/mit/])
             known_licenses[input_str] = url
             return url
         elif "name" in available_license and checkTextIsSimilar(
@@ -268,37 +271,66 @@ def checkTextIsSimilar(original: str, target: list[str] | str) -> bool:
         target = [target]
 
     for t in target:
-        ## remove whitespaces and prefixes from URLs
-        original.replace(" ", "")
-        t.replace(" ", "")
-        original.replace("https://", "")
-        t.replace("https://", "")
-        original.replace("http://", "")
-        t.replace("http://", "")
+        # Remove case sensitivity
+        original = original.lower()
+        t = t.lower()
 
-        ## remove suffixes from URLs (e.g. .json, .html, .rdf, etc) There might be multiple points in the URL so we only remove the last one
-        original = original.rsplit(".", 1)[0]
-        t = t.rsplit(".", 1)[0]
+        # remove whitespaces and prefixes from URLs
+        original = original.replace(" ", "")
+        t = t.replace(" ", "")
+        original = original.replace("https://", "")
+        t = t.replace("https://", "")
+        original = original.replace("http://", "")
+        t = t.replace("http://", "")
+        original = original.replace("www.", "")
+        t = t.replace("www.", "")
+        original = original.replace("legalcode", "")
+        t = t.replace("legalcode", "")
 
-        ## if there is a slash at the end of the URL, remove it
+        # remove file extensions
+        original = original.replace(".json", "")
+        t = t.replace(".json", "")
+        original = original.replace(".html", "")
+        t = t.replace(".html", "")
+        original = original.replace(".txt", "")
+        t = t.replace(".txt", "")
+        original = original.replace(".md", "")
+        t = t.replace(".md", "")
+        original = original.replace(".xml", "")
+        t = t.replace(".xml", "")
+        original = original.replace(".rdf", "")
+        t = t.replace(".rdf", "")
+
+        # replace licenses with license to match SPDX URLs (e.g. https://opensource.org/licenses/MIT)
+        original = original.replace("licenses", "license")
+        t = t.replace("licenses", "license")
+
+        # if there is a slash at the end of the URL, remove it
         if original.endswith("/"):
             original = original[:-1]
         if t.endswith("/"):
             t = t[:-1]
 
-        ## if its a creative commons license, remove the legalcode part
-        if "creativecommons.org" in original:
-            original = original.replace("/legalcode", "")
-
-        if original.lower() == t.lower():  # check if the strings are equal
+        if original == t:  # check if the strings are equal
+            logger.debug(f"Found similar text: {original} == {t}")
             return True
-        elif (
-            original.lower() in t.lower()
-        ):  # check if the original string is in the target string
-            return True
-        elif (
-            t.lower() in original.lower()
-        ):  # check if the target string is in the original string
-            return True
+        else:
+            logger.debug(f"Found different text: {original} != {t}")
 
     return False
+
+
+if __name__ == "__main__":
+    print(asyncio.run(parseSPDXLicenseURL("https://opensource.org/licenses/MIT")))
+    print(asyncio.run(parseSPDXLicenseURL("MIT")))
+    print(
+        asyncio.run(
+            parseSPDXLicenseURL(
+                "https://creativecommons.org/licenses/by-sa/4.0/legalcode"
+            )
+        )
+    )
+
+    print("This module is not meant to be executed directly.")
+    print("Please import the module and use its functions.")
+    exit(1)

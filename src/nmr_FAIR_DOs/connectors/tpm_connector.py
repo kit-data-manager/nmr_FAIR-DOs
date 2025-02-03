@@ -51,7 +51,8 @@ class TPMConnector:
 
         headers = {"Content-Type": "application/json"}
 
-        content = self._applyTypeAPIFixes(pidRecord.toJSON())
+        # content = self._applyTypeAPIFixes(pidRecord.toJSON()) # TODO: Fix this
+        content = pidRecord.toJSON()
 
         endpoint = "/api/v1/pit/pid"
 
@@ -88,7 +89,8 @@ class TPMConnector:
                     "FAIR-DO must not be None and must be an instance of PIDRecord"
                 )
 
-            content.append(self._applyTypeAPIFixes(fairdo.toJSON()))
+            # content.append(self._applyTypeAPIFixes(fairdo.toJSON())) # TODO: Fix this
+            content.append(fairdo.toJSON())
 
         endpoint = "/api/v1/pit/pids"
 

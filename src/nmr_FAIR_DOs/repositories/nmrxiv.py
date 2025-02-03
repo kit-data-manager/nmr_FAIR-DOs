@@ -21,6 +21,7 @@ from datetime import datetime
 from string import Template
 from typing import Callable, Any
 
+from nmr_FAIR_DOs.connectors.terminology import Terminology
 from nmr_FAIR_DOs.domain.pid_record import PIDRecord
 from nmr_FAIR_DOs.domain.pid_record_entry import PIDRecordEntry
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
@@ -41,11 +42,18 @@ logger.addHandler(fh)
 class NMRXivRepository(AbstractRepository):
     _baseURL: str
 
-    def __init__(self, baseURL: str, fetch_fresh: bool = True) -> None:
+    def __init__(
+        self, baseURL: str, terminology: Terminology, fetch_fresh: bool = True
+    ) -> None:
         if baseURL is not None and isinstance(baseURL, str):
             self._baseURL = baseURL
         else:
             self._baseURL = "https://nmrxiv.org"
+
+        if terminology is not None and isinstance(terminology, Terminology):
+            self._terminology = terminology
+        else:
+            raise ValueError("Terminology must be an instance of Terminology")
 
         self._fetch_fresh = fetch_fresh if fetch_fresh is not None else True
 
@@ -153,15 +161,11 @@ class NMRXivRepository(AbstractRepository):
         end = end.replace(tzinfo=None)
 
         url = f"{self._baseURL}/api/v1/list/{category}"
-        # page = 1
         complete = False
         objects: list[dict] = []
 
         while not complete:  # Loop until all entries are fetched
             # Create the URL
-            # url = url_template.safe_substitute(
-            #     repositoryURL=self._baseURL, category=category
-            # )
             logger.debug("Getting frame " + url)
 
             # Fetch the data
@@ -225,10 +229,9 @@ class NMRXivRepository(AbstractRepository):
                 logger.debug("Finished fetching all resources for " + category)
             else:
                 url = next_url  # If there are more pages, get the next page
-                # page += 1  # If there are more pages, increment the page number
 
         # Log the number of URLs found and return them
-        logger.info(f"found {len(objects)} urls\n\n")
+        logger.info(f"found {len(objects)} urls\n")
         return objects
 
     async def _getBioChemIntegratedDict(self, elem: dict) -> dict:
@@ -462,44 +465,63 @@ class NMRXivRepository(AbstractRepository):
                             continue
 
                         name = variable["name"]
-                        value = variable["value"]
+                        values = variable["value"]
 
-                        if value is None:
+                        if values is None:
                             logger.warning(
                                 f"Skipping variable {name} because it has no value"
                             )
                             continue
-                        elif isinstance(value, list):
-                            logger.debug(
-                                f"Variable {name} has multiple values: {value}"
-                            )
-                            value = value[0]  # TODO handle multidimensional inputs
+                        elif not isinstance(values, list):
+                            values = [values]
 
-                        logger.debug(f"Evaluating variable {name} with value {value}")
-                        if name == "NMR solvent":
-                            fdo.addEntry(
-                                "21.T11969/92b4c6b461709b5b36f5",
-                                value,
-                                "NMR solvent",
+                        for value in values:
+                            if not isinstance(value, str):
+                                logger.warning(
+                                    f"Skipping variable {name} because value {value} is not a string"
+                                )
+                                continue
+                            logger.debug(
+                                f"Evaluating variable {name} with value {value}"
                             )
-                        elif name == "acquisition nucleus":
-                            fdo.addEntry(
-                                "21.T11969/1058eae15dac10260bb6",
-                                value,  # TODO: handle multidimensional inputs
-                                "Aquisition Nucleus",
-                            )
-                        elif name == "irridation frequency":
-                            fdo.addEntry(
-                                "21.T11969/1e6e84562ace3b58558d",
-                                value,  # TODO: handle multidimensional inputs
-                                "Nominal Proton Frequency",
-                            )
-                        elif name == "nuclear magnetic resonance pulse sequence":
-                            fdo.addEntry(
-                                "21.T11969/3303cd9e3dda7afd6000",
-                                value,  # TODO: handle multidimensional inputs
-                                "Pulse Sequence Name",
-                            )
+                            if name == "NMR solvent":
+                                ontology_item = await self._terminology.searchForTerm(
+                                    value,
+                                    "chebi",
+                                    "http://purl.obolibrary.org/obo/CHEBI_197449",
+                                )
+                                fdo.addEntry(
+                                    "21.T11969/92b4c6b461709b5b36f5",
+                                    ontology_item
+                                    if ontology_item is not None
+                                    else value,
+                                    "NMR solvent",
+                                )
+                            elif name == "acquisition nucleus":
+                                ontology_item = await self._terminology.searchForTerm(
+                                    value,
+                                    "chebi",
+                                    "http://purl.obolibrary.org/obo/CHEBI_33250",
+                                )
+                                fdo.addEntry(
+                                    "21.T11969/1058eae15dac10260bb6",
+                                    ontology_item
+                                    if ontology_item is not None
+                                    else value,
+                                    "Aquisition Nucleus",
+                                )
+                            elif name == "irridation frequency":
+                                fdo.addEntry(
+                                    "21.T11969/1e6e84562ace3b58558d",
+                                    value,
+                                    "Nominal Proton Frequency",
+                                )
+                            elif name == "nuclear magnetic resonance pulse sequence":
+                                fdo.addEntry(
+                                    "21.T11969/3303cd9e3dda7afd6000",
+                                    value,
+                                    "Pulse Sequence Name",
+                                )
                     except Exception as e:
                         logger.error(f"Error mapping variable {variable}: {str(e)}")
                         raise ValueError(f"Error mapping variable {variable}: {str(e)}")
@@ -549,21 +571,6 @@ class NMRXivRepository(AbstractRepository):
                                         new_name,
                                         "name",
                                     )
-            # fdo.addEntry(
-            #     "21.T11969/7a19f6d5c8e63dd6bfcb",
-            #     original_dataset["measurementTechnique"]["@id"],
-            #     "NMR method",
-            # )
-            #
-            # fdo.addEntry(
-            #     "21.T11148/2f314c8fe5fb6a0063a8", original_dataset["license"], "license"
-            # )
-
-            # entries.append({
-            #     "key": "21.T11969/d15381199a44a16dc88d",
-            #     "name": "characterizedCompound",
-            #     "value": dataset["isPartOf"][0]["about"][0]["hasBioChemEntityPart"]["molecularWeight"]["value"]
-            # }
 
             # fdo.addEntry(
             #     "21.T11148/82e2503c49209e987740",
@@ -630,13 +637,6 @@ class NMRXivRepository(AbstractRepository):
                 "resourceType",  # TODO: use PID to refer to the resourceType
             )
 
-            # if "measurementTechnique" in bioschema_study:
-            #     fdo.addEntry(
-            #         "21.T11969/7a19f6d5c8e63dd6bfcb",
-            #         bioschema_study["measurementTechnique"]["url"],
-            #         "NMR method",
-            #     )
-
             if "download_url" in original_study:
                 fdo.addEntry(
                     "21.T11148/b8457812905b83046284",
@@ -668,22 +668,6 @@ class NMRXivRepository(AbstractRepository):
                     fdo.addEntry(
                         "21.T11148/7fdada5846281ef5d461", url, "locationPreview"
                     )
-
-            # fdo.addEntry(
-            #     "21.T11969/7a19f6d5c8e63dd6bfcb",
-            #     original_dataset["measurementTechnique"]["@id"],
-            #     "NMR method",
-            # )
-            #
-            # fdo.addEntry(
-            #     "21.T11148/2f314c8fe5fb6a0063a8", original_dataset["license"], "license"
-            # )
-
-            # entries.append({
-            #     "key": "21.T11969/d15381199a44a16dc88d",
-            #     "name": "characterizedCompound",
-            #     "value": dataset["isPartOf"][0]["about"][0]["hasBioChemEntityPart"]["molecularWeight"]["value"]
-            # }
 
             # fdo.addEntry(
             #     "21.T11148/82e2503c49209e987740",
@@ -724,10 +708,9 @@ class NMRXivRepository(AbstractRepository):
                             )
                         )
                     else:
-                        logger.error(
+                        logger.warn(
                             f"The provided part does not contain a molecularWeight or url: {part}"
                         )
-                        # raise ValueError("The provided part does not contain a molecularWeight or url", part)
 
                     # mol = part["molecularWeight"]
                     # # formula = part[
@@ -736,17 +719,6 @@ class NMRXivRepository(AbstractRepository):
                     # # inchi = part["inChI"]
                     # pubchem = part["url"]
 
-                    # compoundEntries.append(
-                    #     PIDRecordEntry(
-                    #         "21.T11969/d15381199a44a16dc88d",
-                    #         json.dumps(value),
-                    #         # json.dumps({
-                    #         #     "21.T11969/6c4d3deac9a49b65886a": mol,
-                    #         #     "21.T11969/f9cb9b53273ce0da7739": pubchem,
-                    #         # }),
-                    #         "characterizedCompound",
-                    #     )
-                    # )
             elif "molecules" in original_study:
                 for molecule in original_study["molecules"]:
                     mol = molecule["molecular_weight"]
@@ -757,7 +729,9 @@ class NMRXivRepository(AbstractRepository):
                     compoundEntries.append(
                         PIDRecordEntry(
                             "21.T11969/d15381199a44a16dc88d",
-                            mol,
+                            {
+                                "21.T11969/6c4d3deac9a49b65886a": mol,
+                            },
                             "characterizedCompound",
                         )
                     )
@@ -772,10 +746,6 @@ class NMRXivRepository(AbstractRepository):
                             f"The provided part {part} in this study does not contain an @id"
                         )
                         continue
-                        # raise ValueError(
-                        #     "The provided part in this study does not contain an @id",
-                        #     part,
-                        # )
 
                     presumedDatasetID = encodeInBase64(
                         part["@id"].replace("https://doi.org/", "")
@@ -814,7 +784,7 @@ class NMRXivRepository(AbstractRepository):
                     if len(compoundEntries) > 0:
                         datasetEntries.extend(compoundEntries)
 
-                    try:
+                    try:  # TODO: Abstract this
 
                         def add_metadata_entry(fdo_pid: str, pid: str) -> None:
                             if pid is not None:
@@ -835,32 +805,6 @@ class NMRXivRepository(AbstractRepository):
                             datasetEntries,
                             lambda pid: add_metadata_entry(fdo.getPID(), pid),
                         )
-                        # onsuccess = lambda pid: add_metadata_entry(fdo.getPID(), pid)
-                        #
-                        # onsuccess = (
-                        #     lambda pid: addEntries(
-                        #         fdo.getPID(),
-                        #         [
-                        #             PIDRecordEntry(
-                        #                 "21.T11148/4fe7cde52629b61e3b82",
-                        #                 pid,
-                        #                 "isMetadataFor",
-                        #             )
-                        #         ],
-                        #         None,
-                        #     )
-                        #     if pid is not None
-                        #     else None
-                        # )
-                        # addEntries(presumedDatasetID, datasetEntries, onsuccess)
-
-                        # datasetPID = addEntries(presumedDatasetID, datasetEntries)
-                        # if datasetPID is not None:
-                        #     fdo.addEntry(
-                        #         "21.T11148/4fe7cde52629b61e3b82",
-                        #         datasetPID,
-                        #         "isMetadataFor",
-                        #     )
                     except Exception as e:
                         logger.error(
                             "Error adding dataset reference to study",
@@ -903,13 +847,6 @@ class NMRXivRepository(AbstractRepository):
                 "Project",
                 "resourceType",  # TODO: use PID to refer to the resourceType
             )
-
-            # if "measurementTechnique" in bioschema_project:
-            #     fdo.addEntry(
-            #         "21.T11969/7a19f6d5c8e63dd6bfcb",
-            #         bioschema_project["measurementTechnique"]["url"],
-            #         "NMR method",
-            #     )
 
             if "download_url" in original_project:
                 fdo.addEntry(
@@ -980,38 +917,11 @@ class NMRXivRepository(AbstractRepository):
                                     None,
                                 )
 
-                        # onsuccess: Callable[[str], None] = (
-                        #     lambda pid: add_metadata_entry(fdo.getPID(), pid)
-                        # )
-
-                        # onsuccess = (
-                        #     lambda pid: addEntries(
-                        #         fdo.getPID(),
-                        #         [
-                        #             PIDRecordEntry(
-                        #                 "21.T11148/4fe7cde52629b61e3b82",
-                        #                 pid,
-                        #                 "isMetadataFor",
-                        #             )
-                        #         ],
-                        #         None,
-                        #     )
-                        #     if pid is not None
-                        #     else None
-                        # )
                         addEntries(
                             presumedStudyID,
                             studyEntries,
                             lambda pid: add_metadata_entry(fdo.getPID(), pid),
                         )
-                        # onsuccess = lambda pid: fdo.addEntry("21.T11148/4fe7cde52629b61e3b82", pid, "isMetadataFor")
-                        # studyPID = addEntries(presumedStudyID, studyEntries, onsuccess)
-                        # if studyPID is not None:
-                        #     fdo.addEntry(
-                        #         "21.T11148/4fe7cde52629b61e3b82",
-                        #         studyPID,
-                        #         "isMetadataFor",
-                        #     )
                     except Exception as e:
                         logger.error(
                             "Error adding study reference to project",
@@ -1024,7 +934,18 @@ class NMRXivRepository(AbstractRepository):
             logger.error(f"Error mapping project to FAIR-DO: {str(e)}", project)
             raise ValueError(f"Error mapping project to FAIR-DO: {str(e)}", project)
 
-    def _removeDescription(self, resource: Any) -> dict:
+    def _removeDescription(self, resource: Any):
+        """
+        Removes the description from the specified resource. This is done for better readability and to reduce the size of the JSON-LD. The description field is not machine-readable and is therefore not needed.
+
+        Args:
+            resource (Any): The resource to remove the description from. If it is not a dictionary, the resource is returned as is.
+
+        Returns:
+            dict: The resource without the description.
+            Any: The resource as is if it is not a dictionary.
+        """
+
         if not resource or resource is None or not isinstance(resource, dict):
             return resource
 
