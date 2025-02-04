@@ -48,7 +48,7 @@ logger.addHandler(fh)
 tpm = TPMConnector(TPM_URL)
 chemotion_repo = ChemotionRepository(CHEMOTION_BASE_URL)
 terminology = Terminology(TERMINOLOGY_URL)
-nmrxiv_repo = NMRXivRepository(NMRXIV_BASE_URL, terminology, False)
+nmrxiv_repo = NMRXivRepository(NMRXIV_BASE_URL, terminology)
 elasticsearch = ElasticsearchConnector(
     ELASTICSEARCH_URL, ELASTICSEARCH_APIKEY, ELASTICSEARCH_INDEX
 )
