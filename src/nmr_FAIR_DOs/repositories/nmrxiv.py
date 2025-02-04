@@ -298,14 +298,20 @@ class NMRXivRepository(AbstractRepository):
                 "digitalObjectType",
             )
 
-            if "created_at" in original_resource:
+            if (
+                "created_at" in original_resource
+                and original_resource["created_at"] is not None
+            ):
                 fdo.addEntry(
                     "21.T11148/aafd5fb4c7222e2d950a",
                     parseDateTime(original_resource["created_at"]).isoformat(),
                     "dateCreated",
                 )
 
-            if "updated_at" in original_resource:
+            if (
+                "updated_at" in original_resource
+                and original_resource["updated_at"] is not None
+            ):
                 fdo.addEntry(
                     "21.T11148/397d831aa3a9d18eb52c",
                     parseDateTime(original_resource["updated_at"]).isoformat(),
@@ -317,12 +323,12 @@ class NMRXivRepository(AbstractRepository):
                     "21.T11148/6ae999552a0d2dca14d6", original_resource["name"], "name"
                 )
 
-            if "identifier" in original_resource:
-                fdo.addEntry(
-                    "21.T11148/f3f0cbaa39fa9966b279",
-                    original_resource["identifier"].replace("NMRXIV:", ""),
-                    "identifier",
-                )
+            # if "identifier" in original_resource:
+            #     fdo.addEntry(
+            #         "21.T11148/f3f0cbaa39fa9966b279",
+            #         original_resource["identifier"].replace("NMRXIV:", ""),
+            #         "identifier",
+            #     )
             fdo.addEntry(
                 "21.T11148/f3f0cbaa39fa9966b279",
                 original_resource["doi"].replace("https://doi.org/", ""),
@@ -332,13 +338,17 @@ class NMRXivRepository(AbstractRepository):
             if (
                 "license" in original_resource
                 and "spdx_id" in original_resource["license"]
+                and original_resource["license"]["spdx_id"] is not None
             ):
                 fdo.addEntry(
                     "21.T11148/2f314c8fe5fb6a0063a8",
                     await parseSPDXLicenseURL(original_resource["license"]["spdx_id"]),
                     "license",
                 )
-            elif "license" in bioschema_resource:
+            elif (
+                "license" in bioschema_resource
+                and bioschema_resource["license"] is not None
+            ):
                 fdo.addEntry(
                     "21.T11148/2f314c8fe5fb6a0063a8",
                     await parseSPDXLicenseURL(bioschema_resource["license"]),
@@ -415,7 +425,7 @@ class NMRXivRepository(AbstractRepository):
                 "resourceType",  # TODO: use PID to refer to the resourceType
             )
 
-            if "doi" in original_dataset:
+            if "doi" in original_dataset and original_dataset["doi"] is not None:
                 url = f"https://dx.doi.org/{original_dataset["doi"].replace("https://doi.org/", "")}"
                 fdo.addEntry(
                     "21.T11148/b8457812905b83046284",
@@ -423,7 +433,9 @@ class NMRXivRepository(AbstractRepository):
                     "digitalObjectLocation",
                 )
 
-            if "measurementTechnique" in bioschema_dataset:
+            if "measurementTechnique" in bioschema_dataset and isinstance(
+                bioschema_dataset["measurementTechnique"], dict
+            ):
                 if "url" in bioschema_dataset["measurementTechnique"]:
                     fdo.addEntry(
                         "21.T11969/7a19f6d5c8e63dd6bfcb",
@@ -435,27 +447,35 @@ class NMRXivRepository(AbstractRepository):
                         f"Measurement technique in entry {bioschema_dataset["@id"]} has no URL: {bioschema_dataset['measurementTechnique']}"
                     )
 
-            if "public_url" in original_dataset:
+            if (
+                "public_url" in original_dataset
+                and original_dataset["public_url"] is not None
+            ):
                 fdo.addEntry(
                     "21.T11969/8710d753ad10f371189b",
                     original_dataset["public_url"],
                     "landingPageLocation",
                 )
-            elif "url" in bioschema_dataset:
+            elif "url" in bioschema_dataset and bioschema_dataset["url"] is not None:
                 fdo.addEntry(
                     "21.T11969/8710d753ad10f371189b",
                     bioschema_dataset["url"],
                     "landingPageLocation",
                 )
 
-            if "dataset_photo_url" in original_dataset:
+            if (
+                "dataset_photo_url" in original_dataset
+                and original_dataset["dataset_photo_url"] is not None
+            ):
                 fdo.addEntry(
                     "21.T11148/7fdada5846281ef5d461",
                     original_dataset["dataset_photo_url"],
                     "locationPreview",
                 )
 
-            if "variableMeasured" in bioschema_dataset:
+            if "variableMeasured" in bioschema_dataset and isinstance(
+                bioschema_dataset["variableMeasured"], list
+            ):
                 for variable in bioschema_dataset["variableMeasured"]:
                     try:
                         if "name" not in variable or "value" not in variable:
@@ -490,26 +510,24 @@ class NMRXivRepository(AbstractRepository):
                                     "chebi",
                                     "http://purl.obolibrary.org/obo/CHEBI_197449",
                                 )
-                                fdo.addEntry(
-                                    "21.T11969/92b4c6b461709b5b36f5",
-                                    ontology_item
-                                    if ontology_item is not None
-                                    else value,
-                                    "NMR solvent",
-                                )
+                                if ontology_item is not None:
+                                    fdo.addEntry(
+                                        "21.T11969/92b4c6b461709b5b36f5",
+                                        ontology_item,
+                                        "NMR solvent",
+                                    )
                             elif name == "acquisition nucleus":
                                 ontology_item = await self._terminology.searchForTerm(
                                     value,
                                     "chebi",
                                     "http://purl.obolibrary.org/obo/CHEBI_33250",
                                 )
-                                fdo.addEntry(
-                                    "21.T11969/1058eae15dac10260bb6",
-                                    ontology_item
-                                    if ontology_item is not None
-                                    else value,
-                                    "Aquisition Nucleus",
-                                )
+                                if ontology_item is not None:
+                                    fdo.addEntry(
+                                        "21.T11969/1058eae15dac10260bb6",
+                                        ontology_item,
+                                        "Aquisition Nucleus",
+                                    )
                             elif name == "irridation frequency":
                                 fdo.addEntry(
                                     "21.T11969/1e6e84562ace3b58558d",
@@ -526,7 +544,10 @@ class NMRXivRepository(AbstractRepository):
                         logger.error(f"Error mapping variable {variable}: {str(e)}")
                         raise ValueError(f"Error mapping variable {variable}: {str(e)}")
 
-            if "isPartOf" in bioschema_dataset:
+            if (
+                "isPartOf" in bioschema_dataset
+                and bioschema_dataset["isPartOf"] is not None
+            ):
                 if isinstance(bioschema_dataset["isPartOf"], list):
                     for part in bioschema_dataset["isPartOf"]:
                         if "name" in part:
@@ -637,7 +658,10 @@ class NMRXivRepository(AbstractRepository):
                 "resourceType",  # TODO: use PID to refer to the resourceType
             )
 
-            if "download_url" in original_study:
+            if (
+                "download_url" in original_study
+                and original_study["download_url"] is not None
+            ):
                 fdo.addEntry(
                     "21.T11148/b8457812905b83046284",
                     original_study["download_url"],
@@ -650,20 +674,26 @@ class NMRXivRepository(AbstractRepository):
                     "digitalObjectLocation",
                 )
 
-            if "public_url" in original_study:
+            if (
+                "public_url" in original_study
+                and original_study["public_url"] is not None
+            ):
                 fdo.addEntry(
                     "21.T11969/8710d753ad10f371189b",
                     original_study["public_url"],
                     "landingPageLocation",
                 )
-            elif "url" in bioschema_study:
+            elif "url" in bioschema_study and bioschema_study["url"] is not None:
                 fdo.addEntry(
                     "21.T11969/8710d753ad10f371189b",
                     bioschema_study["url"],
                     "landingPageLocation",
                 )
 
-            if "study_photo_urls" in original_study:
+            if (
+                "study_photo_urls" in original_study
+                and original_study["study_photo_urls"] is not None
+            ):
                 for url in original_study["study_photo_urls"]:
                     fdo.addEntry(
                         "21.T11148/7fdada5846281ef5d461", url, "locationPreview"
@@ -679,6 +709,7 @@ class NMRXivRepository(AbstractRepository):
             if (
                 "about" in bioschema_study
                 and "hasBioChemEntityPart" in bioschema_study["about"]
+                and bioschema_study["about"]["hasBioChemEntityPart"] is not None
             ):
                 for part in bioschema_study["about"]["hasBioChemEntityPart"]:
                     if not part or part is None:
@@ -719,7 +750,10 @@ class NMRXivRepository(AbstractRepository):
                     # # inchi = part["inChI"]
                     # pubchem = part["url"]
 
-            elif "molecules" in original_study:
+            elif (
+                "molecules" in original_study
+                and original_study["molecules"] is not None
+            ):
                 for molecule in original_study["molecules"]:
                     mol = molecule["molecular_weight"]
                     # formula = molecule[
@@ -739,7 +773,7 @@ class NMRXivRepository(AbstractRepository):
             if len(compoundEntries) > 0:
                 fdo.addListOfEntries(compoundEntries)
 
-            if "hasPart" in bioschema_study:
+            if "hasPart" in bioschema_study and bioschema_study["hasPart"] is not None:
                 for part in bioschema_study["hasPart"]:
                     if not part or part is None or "@id" not in part:
                         logger.error(
@@ -848,7 +882,10 @@ class NMRXivRepository(AbstractRepository):
                 "resourceType",  # TODO: use PID to refer to the resourceType
             )
 
-            if "download_url" in original_project:
+            if (
+                "download_url" in original_project
+                and original_project["download_url"] is not None
+            ):
                 fdo.addEntry(
                     "21.T11148/b8457812905b83046284",
                     original_project["download_url"],
@@ -861,27 +898,36 @@ class NMRXivRepository(AbstractRepository):
                     "digitalObjectLocation",
                 )
 
-            if "public_url" in original_project:
+            if (
+                "public_url" in original_project
+                and original_project["public_url"] is not None
+            ):
                 fdo.addEntry(
                     "21.T11969/8710d753ad10f371189b",
                     original_project["public_url"],
                     "landingPageLocation",
                 )
-            elif "url" in bioschema_project:
+            elif "url" in bioschema_project and bioschema_project["url"] is not None:
                 fdo.addEntry(
                     "21.T11969/8710d753ad10f371189b",
                     bioschema_project["url"],
                     "landingPageLocation",
                 )
 
-            if "photo_url" in original_project:
+            if (
+                "photo_url" in original_project
+                and original_project["photo_url"] is not None
+            ):
                 fdo.addEntry(
                     "21.T11148/7fdada5846281ef5d461",
                     original_project["photo_url"],
                     "locationPreview",
                 )
 
-            if "hasPart" in bioschema_project:
+            if (
+                "hasPart" in bioschema_project
+                and bioschema_project["hasPart"] is not None
+            ):
                 for study in bioschema_project["hasPart"]:
                     if "@id" not in study:
                         raise ValueError(

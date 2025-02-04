@@ -303,6 +303,8 @@ class ChemotionRepository(AbstractRepository):
         contact.extend(extractContactField("author", chemotion_content))
         contact.extend(extractContactField("creator", chemotion_content))
         contact.extend(extractContactField("contributor", chemotion_content))
+        # if "includedInDataCatalog" in chemotion_content:
+        #     contact.extend(extractContactField("creator", chemotion_content["includedInDataCatalog"]))
 
         logger.debug(f"Found {len(contact)} contacts")
 
@@ -313,14 +315,20 @@ class ChemotionRepository(AbstractRepository):
                 "contact",
             )
 
-        if "dateModified" in chemotion_content:
+        if (
+            "dateModified" in chemotion_content
+            and chemotion_content["dateModified"] is not None
+        ):
             fdo.addEntry(
                 "21.T11148/397d831aa3a9d18eb52c",
                 parseDateTime(chemotion_content["dateModified"]).isoformat(),
                 "dateModified",
             )
 
-        if "dateCreated" in chemotion_content:
+        if (
+            "dateCreated" in chemotion_content
+            and chemotion_content["dateCreated"] is not None
+        ):
             fdo.addEntry(
                 "21.T11148/aafd5fb4c7222e2d950a",
                 parseDateTime(chemotion_content["dateCreated"]).isoformat(),
@@ -379,6 +387,22 @@ class ChemotionRepository(AbstractRepository):
                 await parseSPDXLicenseURL(dataset["license"]),
                 "license",
             )
+
+            if "isPartOf" in dataset and not fdo.entryExists(
+                "21.T11148/aafd5fb4c7222e2d950a"
+            ):
+                if "dateCreated" in dataset["isPartOf"]:
+                    fdo.addEntry(
+                        "21.T11148/aafd5fb4c7222e2d950a",
+                        parseDateTime(dataset["isPartOf"]["dateCreated"]).isoformat(),
+                        "dateCreated",
+                    )
+                elif "datePublished" in dataset["isPartOf"]:
+                    fdo.addEntry(
+                        "21.T11148/aafd5fb4c7222e2d950a",
+                        parseDateTime(dataset["isPartOf"]["datePublished"]).isoformat(),
+                        "dateCreated",
+                    )
 
             # fdo.addEntry(
             #     "21.T11148/82e2503c49209e987740",

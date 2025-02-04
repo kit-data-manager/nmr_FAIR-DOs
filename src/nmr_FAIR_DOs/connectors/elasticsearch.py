@@ -118,7 +118,7 @@ class ElasticsearchConnector:
 
         self._client = Elasticsearch(hosts=self._url, api_key=self._apikey)
 
-        logger.info("Connected to Elasticsearch", self._client.info().__repr__())
+        logger.info(f"Connected to Elasticsearch: {self._client.info()}")
 
         # Check if the client is connected
         if not self._client.ping():
@@ -128,21 +128,6 @@ class ElasticsearchConnector:
         if self._client.indices.exists(index=indexName):
             logger.info("Index " + indexName + " already exists")
         else:
-            # mappings = {
-            #     "mappings": {
-            #         "properties": {
-            #             "hasMetadata": {
-            #                 "type": "array",
-            #                 "coerce": True,
-            #             },
-            #             "isMetadataFor": {
-            #                 "type": "array",
-            #                 "coerce": True,
-            #             },
-            #         }
-            #     }
-            # }
-
             self._client.indices.create(index=indexName)
             logger.info("Created index " + indexName)
 
@@ -181,10 +166,6 @@ class ElasticsearchConnector:
         logger.debug(
             "Elasticsearch response for bulk insert of PID records: ", response
         )
-
-        #
-        # for pidRecord in pidRecords:
-        #     await self.addPIDRecord(pidRecord)
 
     def searchForPID(self, presumedPID: str) -> str:
         response = self._client.search(

@@ -31,11 +31,6 @@ from nmr_FAIR_DOs.lib import (
 from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
 
 logging.basicConfig()
-# logging.basicConfig(filename="nmr_FAIR_DOs.log",
-#                     filemode='a',
-#                     format='%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s',
-#                     datefmt='%Y-%m-%d %H:%M:%S',
-#                     level=logging.DEBUG)
 logging.getLogger().setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 fh = logging.FileHandler("all.log")

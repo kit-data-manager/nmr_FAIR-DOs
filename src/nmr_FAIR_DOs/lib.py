@@ -576,13 +576,43 @@ if __name__ == "__main__":
         pid_records = [PIDRecord.fromJSON(record) for record in json.load(f)]
         logger.info(f"found {len(pid_records)} PID records in file")
 
-        biggest_fdo = pid_records[0]
+        most_informative_FDO = pid_records[0]
+        biggest_FDO = pid_records[0]
+        biggest_FDO_attributeValue = 0
         for record in pid_records:
-            if len(record.getEntries()) > len(biggest_fdo.getEntries()):
-                logger.info(f"New biggest FAIR-DO: {record.getPID()}")
-                biggest_fdo = record
+            if len(record.getEntries()) > len(most_informative_FDO.getEntries()):
+                logger.info(f"New most informative FAIR-DO: {record.getPID()}")
+                most_informative_FDO = record
 
-        logger.info(f"Biggest FAIR-DO: {biggest_fdo.getPID()}")
-        with open("biggest_fdo.json", "w") as f:
-            json.dump(biggest_fdo.toJSON(), f)
-            logger.info("Biggest FAIR-DO written to file biggest_fdo.json")
+            for entry in record.getEntries().values():
+                if isinstance(entry, list) and len(entry) > biggest_FDO_attributeValue:
+                    logger.info(f"New biggest FAIR-DO: {record.getPID()}")
+                    biggest_FDO = record
+                    biggest_FDO_attributeValue = len(entry)
+
+            # if len(record.getEntries().values().) > biggest_FDO_attributeValue:
+            #     logger.info(f"New biggest FAIR-DO: {record.getPID()}")
+            #     biggest_FDO = record
+            #     biggest_FDO_attributeValue = len(record.getEntries().values())
+
+            # # Check all attributes of the record. If the amount of values is bigger than the current biggest_FDO_attributeValue, update the biggest_FDO
+            # for entry in record.getEntries().:
+            #     if entry.value is not None and isinstance(entry.value, list):
+            #         if len(entry.value) > biggest_FDO_attributeValue:
+            #             logger.info(f"New biggest FAIR-DO: {record.getPID()}")
+            #             biggest_FDO = record
+            #             biggest_FDO_attributeValue = max(
+            #                 len(entry.value) for entry in record.getEntries()
+            #             )
+
+        logger.info(f"Most informative FAIR-DO: {most_informative_FDO.getPID()}")
+        with open("most_informative_FDO.json", "w") as f:
+            json.dump(most_informative_FDO.toJSON(), f)
+            logger.info(
+                "Most informative FAIR-DO written to file most_informative_FDO.json"
+            )
+
+        logger.info(f"Biggest FAIR-DO: {biggest_FDO.getPID()}")
+        with open("biggest_FDO.json", "w") as f:
+            json.dump(biggest_FDO.toJSON(), f)
+            logger.info("Biggest FAIR-DO written to file biggest_FDO.json")

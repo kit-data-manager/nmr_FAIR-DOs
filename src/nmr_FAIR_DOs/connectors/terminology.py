@@ -19,6 +19,7 @@ import logging
 from string import Template
 
 import requests
+from typing_extensions import Callable
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -28,23 +29,56 @@ logger.addHandler(fh)
 
 
 class Terminology:
-    cache: dict[str, str] = {}
+    # This list contains the terms that are already in the cache. The format is "query", "IRI". The provided entries were found by hand and are not guaranteed to be correct. Refer to https://www.sigmaaldrich.com/DE/de/technical-documents/technical-article/analytical-chemistry/nuclear-magnetic-resonance/nmr-deuterated-solvent-properties-reference
+    cache: dict[str, str] = {
+        "DMSO": "http://purl.obolibrary.org/obo/CHEBI_193041",
+        "DMSO_D6": "http://purl.obolibrary.org/obo/CHEBI_193041",
+        "CDCL3": "http://purl.obolibrary.org/obo/CHEBI_85365",
+        "CHLOROFORM-D": "http://purl.obolibrary.org/obo/CHEBI_85365",
+        "Acetone": "http://purl.obolibrary.org/obo/CHEBI_78217",
+        "Aceton": "http://purl.obolibrary.org/obo/CHEBI_78217",
+        "MEOD": "http://purl.obolibrary.org/obo/CHEBI_156265",
+        "D2O": "http://purl.obolibrary.org/obo/CHEBI_41981",
+        "C6D6": "http://purl.obolibrary.org/obo/CHEBI_193039",
+        "CD3CN": "http://purl.obolibrary.org/obo/CHEBI_193038",
+        "THF": "http://purl.obolibrary.org/obo/CHEBI_193047",
+        "CD2Cl2": "http://purl.obolibrary.org/obo/CHEBI_193042",
+        # "MeOH": "http://purl.obolibrary.org/obo/CHEBI_17790"
+        # "Dioxane": "http://purl.obolibrary.org/obo/CHEBI_46923"
+    }
+    validation_functions: dict[str, Callable[[dict], bool]] = {
+        "chebi": lambda x: Terminology._validateCHEBI(x)
+    }
 
     def __init__(self, terminology_url: str):
         self._terminology_url = terminology_url
 
     async def searchForTerm(
-        self, query: str, ontology: str, parent: str | None
+        self,
+        query: str,
+        ontology: str,
+        parent: str | None,
+        validateNode: Callable[[dict], bool] = None,
     ) -> str | None:
         """
         Searches for a term in the terminology service
 
         :param query:str The term to search for
         :param ontology:str The ontology to search in
-        :param childOf:str The parent term to search for
+        :param parent:str The parent term to search for
+        :param validateNode:Callable[[dict], bool] A function to validate the node found. Input is the entity from the terminology service
 
         :return:str|None The IRI of the (best) term found
         """
+        # Set the validation function to the one provided or the default one for the ontology. If the ontology is not in the list, use a lambda function that always returns True
+        validateNode = (
+            validateNode
+            if validateNode is not None
+            else self.validation_functions[ontology]
+            if ontology in self.validation_functions
+            else lambda x: True
+        )
+
         logger.debug(
             f"Searching for term {query} in ontology {ontology} with parent {parent}"
         )
@@ -89,7 +123,12 @@ class Terminology:
         else:
             for doc in json["response"]["docs"]:
                 iri = doc["iri"]
-                entities.append(iri)  # Add the IRI to the list of entities found
+                entity = await self._getEntity(ontology, iri)
+
+                if entity is not None and validateNode(entity):
+                    entities.append(iri)  # Add the IRI to the list of entities found
+                else:
+                    logger.debug(f"Entity {iri} is not valid and will be ignored")
 
         if len(entities) == 1:  # If only one entity was found, return it
             logger.info(f"Found single result: {entities[0]}")
@@ -215,9 +254,31 @@ class Terminology:
             )
             return None
 
+    @staticmethod
+    def _validateCHEBI(node: dict) -> bool:
+        """
+        Validates a chemical entity node
+
+        :param node:dict The node to validate (entity from the terminology service)
+
+        :return:bool True if the node is a valid chemical entity, False otherwise
+        """
+        if "http://purl.obolibrary.org/obo/chebi/inchikey" in node:
+            return True
+        elif "http://purl.obolibrary.org/obo/chebi/smiles" in node:
+            return True
+        elif "http://purl.obolibrary.org/obo/chebi/inchi" in node:
+            return True
+        elif "http://purl.obolibrary.org/obo/chebi/mass" in node:
+            return True
+        elif "http://purl.obolibrary.org/obo/chebi/formula" in node:
+            return True
+        return False
+
 
 if __name__ == "__main__":
     t = Terminology("https://api.terminology.tib.eu")
+
     logger.info(
         asyncio.run(
             t.searchForTerm("1H", "chebi", "http://purl.obolibrary.org/obo/CHEBI_33250")
@@ -227,6 +288,16 @@ if __name__ == "__main__":
         asyncio.run(
             t.searchForTerm(
                 "13C", "chebi", "http://purl.obolibrary.org/obo/CHEBI_33250"
+            )
+        )
+    )
+    logger.info("Searching for acetone")
+    logger.info(
+        asyncio.run(
+            t.searchForTerm(
+                "Acetone",
+                "chebi",
+                "http://purl.obolibrary.org/obo/CHEBI_46787",
             )
         )
     )

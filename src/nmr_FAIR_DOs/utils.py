@@ -30,7 +30,9 @@ fh = logging.FileHandler(f"{__name__}.log")
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 
-known_licenses: dict[str, str] = {}
+known_licenses: dict[str, str] = {
+    "https://www.gnu.org/licenses/agpl-3.0.en.html": "https://spdx.org/licenses/AGPL-3.0.json",
+}
 
 
 async def fetch_data(url: str, forceFresh: bool = False) -> dict:
@@ -314,8 +316,6 @@ def checkTextIsSimilar(original: str, target: list[str] | str) -> bool:
         if original == t:  # check if the strings are equal
             logger.debug(f"Found similar text: {original} == {t}")
             return True
-        else:
-            logger.debug(f"Found different text: {original} != {t}")
 
     return False
 

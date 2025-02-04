@@ -97,12 +97,9 @@ class TPMConnector:
         if content is None or len(content) == 0:
             raise ValueError("No content to create due to invalid input")
 
-        logger.debug(json.dumps(content))
-
-        # logger.debug(
-        #     f"Creating FAIR-DOs at {self._tpm_url + endpoint}",
-        #     json.dumps(content)[:250],
-        # )
+        logger.debug(
+            f"Creating FAIR-DOs at {self._tpm_url + endpoint} : {json.dumps(content)[:250]}"
+        )
         resource_response = requests.post(
             self._tpm_url + endpoint, headers=headers, json=content, timeout=None
         )
