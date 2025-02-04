@@ -215,7 +215,8 @@ class TPMConnector:
 
         return result
 
-    def _applyTypeAPIFixes(self, content: dict) -> dict:
+    @staticmethod
+    def _applyTypeAPIFixes(content: dict) -> dict:
         """
         Applies fixes to the content to match the TPM API
 

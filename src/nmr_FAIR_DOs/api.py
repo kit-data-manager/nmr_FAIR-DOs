@@ -28,7 +28,7 @@ from nmr_FAIR_DOs.repositories.AbstractRepository import AbstractRepository
 app = FastAPI()
 
 
-@app.get("/createAll/{repo}")
+@app.get("/createAll/{repositories}")
 def createAllAvailable(repo: str):
     """
     Create PID records for all available resources.
@@ -43,32 +43,25 @@ def createAllAvailable(repo: str):
     return resources
 
 
-# @app.get("/retry/{repo}")
-# def retryErrors(repo: str):
+# @app.command() TODO: Implement this in the FastAPI app
+# def createAllAvailable(
+#     repositories: list[str] = [None],
+#     start: datetime = None,
+#     end: datetime = None,
+#     dryrun: bool = False,
+# ):
 #     """
-#     Retry the creation of PID records for the resources that caused errors during the last run.
+#     Create PID records for all available resources.
 #     """
-#     repository: AbstractRepository = getRepository(repo)
-#     resources = asyncio.run(recreate_pidRecords_with_errors(repository))
-#     print(f"Created PID records for {len(resources)} resources in {repo}.")
-#     print(
-#         f"If errors occurred, please see error_{repository.repositoryID}.json for details."
+#     logger.info(
+#         f"Creating PID records for all available resources in {repositories} in timerange {start}-{end}. Dryrun: {dryrun}"
 #     )
-#     return resources
-
-
-# @app.get("/calculate/{op}")
-# def calc(op: CalcOperation, x: int, y: int = 0):
-#     """Return result of calculation on two integers."""
-#     try:
-#         return calculate(op, x, y)
 #
-#     except (ZeroDivisionError, ValueError, NotImplementedError) as e:
-#         if isinstance(e, ZeroDivisionError):
-#             err = f"Cannot divide x={x} by y=0!"
-#         else:
-#             err = str(e)
-#         raise HTTPException(status_code=422, detail=err)
+#     repos: list[AbstractRepository] = getRepositories(repositories)
+#     resources = asyncio.run(create_pidRecords_from_scratch(repos, start, end, dryrun))
+#
+#     typer.echo(f"Created PID records for {len(resources)} resources in {repos}.")
+#     typer.echo("If errors occurred, please see error_*.json for details.")
 
 
 def run():

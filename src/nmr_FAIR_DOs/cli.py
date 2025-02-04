@@ -47,7 +47,7 @@ app.add_typer(say, name="say")
 
 @app.command()
 def createAllAvailable(
-    repositories: list[str] = [None],
+    repositories: list[str] = None,
     start: datetime = None,
     end: datetime = None,
     dryrun: bool = False,
@@ -55,6 +55,8 @@ def createAllAvailable(
     """
     Create PID records for all available resources.
     """
+    if repositories is None:
+        repositories = [None]
     logger.info(
         f"Creating PID records for all available resources in {repositories} in timerange {start}-{end}. Dryrun: {dryrun}"
     )
@@ -64,25 +66,6 @@ def createAllAvailable(
 
     typer.echo(f"Created PID records for {len(resources)} resources in {repos}.")
     typer.echo("If errors occurred, please see error_*.json for details.")
-
-
-#
-# @app.command()
-# def retryErrors(repo: str):
-#     """
-#     Retry the creation of PID records for the resources that caused errors during the last run.
-#     """
-#     logger.info(
-#         f"Retrying the creation of PID records for the resources that caused errors during the last run in {repo}."
-#     )
-#
-#     repository: AbstractRepository = getRepository(repo)
-#     resources = asyncio.run(recreate_pidRecords_with_errors(repository))
-#
-#     typer.echo(f"Created PID records for {len(resources)} resources in {repo}.")
-#     typer.echo(
-#         f"If errors occurred, please see error_{repository.repositoryID}.json for details."
-#     )
 
 
 @app.command()

@@ -119,6 +119,7 @@ def addEntries(
         presumed_pid (str): The PID of the target PID record
         entries (list[PIDRecordEntry]): The entries to add
         onSuccess (function): The function to call after the entries have been added to the PID record (optional). This function gets the PID of the PID record as an argument.
+        allowRetry (bool): If true, the function will retry to add the entries to the PID record if it fails
 
     Returns:
         str: The PID of the PID record
@@ -426,53 +427,6 @@ async def add_all_existing_pidRecords_to_elasticsearch(fromFile: str = None) -> 
         raise Exception("Error adding PID records to Elasticsearch", e)
 
 
-# async def recreate_pidRecords_with_errors(repo: AbstractRepository) -> list[PIDRecord]:
-#     """
-#     Recreate PID records for the URLs that caused errors during the last run.
-#
-#     Returns:
-#         list[PIDRecord]: A list of PID records created from scratch
-#     """
-#     try:
-#         with open("errors_" + repo.repositoryID + ".json", "r") as f:
-#             errors = json.load(f)  # read errors from the file
-#             # urls = [
-#             #     for
-#             #     error["url"] for error in errors if "url" in error
-#             # ]  # get URLs from errors
-#
-#             urls = []
-#             for error in errors:
-#                 if "url" in error:
-#                     if error["url"] in urls:
-#                         continue
-#                     elif pid_records is not None and any(
-#                         pid_record.getPID() == error["url"]
-#                         for pid_record in pid_records
-#                     ):
-#                         continue
-#                     elif pid := elasticsearch.searchForPID(error["url"]) is not None:
-#                         record = tpm.getPIDRecord(pid)
-#                         if record is not None:
-#                             pid_records.append(record)
-#                             continue
-#                         else:
-#                             urls.append(error["url"])
-#                     else:
-#                         urls.append(error["url"])
-#             if len(urls) > 0:
-#                 logger.info(
-#                     f"Recreating PID records for the following URLs that caused errors during the last run: {urls}"
-#                 )
-#                 record = await create_pidRecords_from_urls(repo, urls)
-#                 pid_records.extend(record)
-#
-#             return pid_records
-#     except Exception as e:
-#         logger.error(f"Error reading errors.json: {str(e)}")
-#         return []
-
-
 def _deduplicateListOfPIDRecords(input: list[PIDRecord]) -> list[PIDRecord]:
     """
     Deduplicate a list of PID records
@@ -606,13 +560,13 @@ if __name__ == "__main__":
             #             )
 
         logger.info(f"Most informative FAIR-DO: {most_informative_FDO.getPID()}")
-        with open("most_informative_FDO.json", "w") as f:
-            json.dump(most_informative_FDO.toJSON(), f)
+        with open("most_informative_FDO.json", "w") as f2:
+            json.dump(most_informative_FDO.toJSON(), f2)
             logger.info(
                 "Most informative FAIR-DO written to file most_informative_FDO.json"
             )
 
         logger.info(f"Biggest FAIR-DO: {biggest_FDO.getPID()}")
-        with open("biggest_FDO.json", "w") as f:
-            json.dump(biggest_FDO.toJSON(), f)
+        with open("biggest_FDO.json", "w") as f2:
+            json.dump(biggest_FDO.toJSON(), f2)
             logger.info("Biggest FAIR-DO written to file biggest_FDO.json")

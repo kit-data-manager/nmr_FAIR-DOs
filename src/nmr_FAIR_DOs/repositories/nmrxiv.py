@@ -267,7 +267,8 @@ class NMRXivRepository(AbstractRepository):
             "bioschema": self._removeDescription(bioschema),
         }
 
-    async def _mapGenericInfo2PIDRecord(self, resource) -> PIDRecord:
+    @staticmethod
+    async def _mapGenericInfo2PIDRecord(resource) -> PIDRecord:
         """
         Maps generic information to a PID record.
 
@@ -323,12 +324,6 @@ class NMRXivRepository(AbstractRepository):
                     "21.T11148/6ae999552a0d2dca14d6", original_resource["name"], "name"
                 )
 
-            # if "identifier" in original_resource:
-            #     fdo.addEntry(
-            #         "21.T11148/f3f0cbaa39fa9966b279",
-            #         original_resource["identifier"].replace("NMRXIV:", ""),
-            #         "identifier",
-            #     )
             fdo.addEntry(
                 "21.T11148/f3f0cbaa39fa9966b279",
                 original_resource["doi"].replace("https://doi.org/", ""),
@@ -739,7 +734,7 @@ class NMRXivRepository(AbstractRepository):
                             )
                         )
                     else:
-                        logger.warn(
+                        logger.warning(
                             f"The provided part does not contain a molecularWeight or url: {part}"
                         )
 

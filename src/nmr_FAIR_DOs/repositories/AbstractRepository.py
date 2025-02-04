@@ -32,9 +32,6 @@ logger = logging.getLogger(__name__)
 class AbstractRepository(ABC):
     """
     An abstract class representing a repository.
-
-    Attributes:
-        repositoryID (str): An identifier for the repository
     """
 
     @property

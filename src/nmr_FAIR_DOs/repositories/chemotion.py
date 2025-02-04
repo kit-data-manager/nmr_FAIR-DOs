@@ -500,7 +500,7 @@ class ChemotionRepository(AbstractRepository):
                                 "characterizedCompound",
                             )
                         else:
-                            logger.warn(
+                            logger.warning(
                                 f"The provided part does not contain a molecularWeight or url: {part}"
                             )
                 if "name" in entry:
