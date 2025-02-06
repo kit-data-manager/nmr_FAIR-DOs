@@ -12,6 +12,8 @@
 <!-- --8<-- [start:abstract] -->
 # nmr_FAIR-DOs
 
+See the [results](https://bwsyncandshare.kit.edu/s/P6qt5ecGsDa2yan) of the project.
+
 ----
 **:warning: TODO: Complete project setup :construction:**
 
