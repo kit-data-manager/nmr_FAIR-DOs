@@ -47,13 +47,31 @@ app.add_typer(say, name="say")
 
 @app.command()
 def createAllAvailable(
-    repositories: list[str] = None,
-    start: datetime = None,
-    end: datetime = None,
-    dryrun: bool = False,
+    repositories: list[str] = typer.Option(
+        None,
+        help="List of repositories to create PID records for. If unspecified, all available repositories are queried.",
+    ),
+    start: datetime = typer.Option(
+        None,
+        help="Start of the time range to create PID records for. If unspecified, datetime.min() is used.",
+    ),
+    end: datetime = typer.Option(
+        None,
+        help="End of the time range to create PID records for. If unspecified, datetime.max() is used.",
+    ),
+    dryrun: bool = typer.Option(
+        False,
+        help="If True, only print the resources that would be created. If unspecified or false, create the PID records.",
+    ),
 ):
     """
     Create PID records for all available resources.
+
+    Args:
+        repositories (list[str]): List of repositories to create PID records for. If None, all available repositories are queried.
+        start (datetime): Start of the time range to create PID records for. If None, datetime.min() is used.
+        end (datetime): End of the time range to create PID records for. If None, datetime.max() is used.
+        dryrun (bool): If True, only print the resources that would be created. If False, create the PID records. Default: False.
     """
     if repositories is None:
         repositories = [None]
@@ -65,17 +83,24 @@ def createAllAvailable(
     resources = asyncio.run(create_pidRecords_from_scratch(repos, start, end, dryrun))
 
     typer.echo(f"Created PID records for {len(resources)} resources in {repos}.")
-    typer.echo("If errors occurred, please see error_*.json for details.")
+    typer.echo("If errors occurred, please see the logs for details.")
 
 
 @app.command()
 def buildElastic(
     from_file: str = typer.Option(
-        None, help="Path to a file containing PID records to be indexed."
+        None,
+        help="Path to a file containing PID records to be indexed. If unspecified, all FAIR-DOs in the active Typed PID-Maker instance will be re-indexed.",
     ),
 ):
     """
     Build the ElasticSearch index for all available resources.
+
+    Args:
+        from_file (str): Path to a file containing PID records
+            to be indexed. If None, all FAIR-DOs in the active Typed PID-Maker instance will be re-indexed. Default: None.
     """
     logger.info("Building the ElasticSearch index for all available resources.")
     asyncio.run(add_all_existing_pidRecords_to_elasticsearch(from_file))
+
+    typer.echo("ElasticSearch index built successfully.")

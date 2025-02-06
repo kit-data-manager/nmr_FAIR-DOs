@@ -1,3 +1,17 @@
+"""
+This module reads the environment variables from the .env file and sets them as global variables.
+
+The following environment variables are required:
+
+- `TPM_URL`: The URL of the Typed PID-Maker instance. See [Typed PID Maker on GitHub](https://github.com/kit-data-manager/pit-service)
+- `TERMINOLOGY_URL`: The base URL of the terminology service. e.g. https://api.terminology.tib.eu
+- `CHEMOTION_BASE_URL`: The base URL of the Chemotion repository instance. e.g. https://chemotion-repository.net
+- `NMRXIV_BASE_URL`: The base URL of the NMRXIV repository instance. e.g. https://nmrxiv.org
+- `ELASTICSEARCH_URL`: The base URL of the Elasticsearch API endpoint. e.g. https://elasticsearch.example.com:9200
+- `ELASTICSEARCH_INDEX`: The name of the Elasticsearch index to use.
+- `ELASTICSEARCH_APIKEY`: The API key to use for the Elasticsearch API.
+- `CACHE_DIR`: The directory to use for caching API results. This is necessary because of missing bulk API support in Chemotion and NMRXiv repositories. e.g. tmp/cache
+"""
 #  SPDX-FileCopyrightText: 2025 Karlsruhe Institute of Technology <maximilian.inckmann@kit.edu>
 #  SPDX-License-Identifier: Apache-2.0
 #
