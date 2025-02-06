@@ -14,3 +14,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+"""
+This module contains all repositories for which FAIR DOs are created.
+
+The repositories are implemented as classes, which are derived from the abstract class Repository.
+The following repositories are implemented:
+
+- `ChemotionRepository`: A repository for the Chemotion repository. See https://chemotion-repository.net/ for more information.
+- `NMRXivRepository`: A repository for the NMRXiv repository. See https://nmrxiv.org/ for more information.
+"""

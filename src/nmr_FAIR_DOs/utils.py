@@ -1,3 +1,7 @@
+"""
+This module provides utility functions for the NMR FAIR DOs project.
+"""
+
 #  SPDX-FileCopyrightText: 2025 Karlsruhe Institute of Technology <maximilian.inckmann@kit.edu>
 #  SPDX-License-Identifier: Apache-2.0
 #
@@ -38,6 +42,8 @@ known_licenses: dict[str, str] = {
 async def fetch_data(url: str, forceFresh: bool = False) -> dict:
     """
     Fetches data from the specified URL.
+    The data is cached in the CACHE_DIR.
+    If the data is already cached, it is used instead of fetching fresh data.
 
     Args:
         url (str): The URL to fetch data from
@@ -56,28 +62,30 @@ async def fetch_data(url: str, forceFresh: bool = False) -> dict:
 
     # check if data is cached
     if os.path.isfile(filename) and not forceFresh:
-        with open(filename, "r") as f:
-            result = json.load(f)
-            if result is not None and isinstance(result, dict):
+        with open(filename, "r") as f:  # load from cache
+            result = json.load(f)  # get JSON
+            if result is not None and isinstance(
+                result, dict
+            ):  # check if JSON is valid
                 logger.info(f"Using cached data for {url}")
-                return result
+                return result  # return cached data
 
     try:
         logger.debug(f"Fetching {url}")
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    with open(filename, "w") as f:  # save to cache
-                        json.dump(await response.json(), f)
-                    return await response.json()
-                else:
+        async with aiohttp.ClientSession() as session:  # create a new session
+            async with session.get(url) as response:  # fetch data
+                if response.status == 200:  # check if the response is OK
+                    with open(filename, "w") as c:  # save to cache
+                        json.dump(await response.json(), c)
+                    return await response.json()  # return fetched data
+                else:  # if the response is not OK raise an error
                     logger.error(f"Failed to fetch {url}: {response.status}", response)
                     raise ValueError(
                         f"Failed to fetch {url}: {response.status}",
                         response,
                         datetime.now().isoformat(),
                     )
-    except Exception as e:
+    except Exception as e:  # if an error occurs raise an error
         print(f"Error fetching {url}: {str(e)}")
         raise ValueError(str(e), url, datetime.now().isoformat())
 
@@ -85,6 +93,7 @@ async def fetch_data(url: str, forceFresh: bool = False) -> dict:
 async def fetch_multiple(urls: list[str], forceFresh: bool = False) -> list[dict]:
     """
     Fetches data from multiple URLs.
+    This function is a wrapper around fetch_data that fetches data from multiple URLs concurrently.
 
     Args:
         urls (List[str]): A list of URLs to fetch data from
@@ -99,14 +108,22 @@ async def fetch_multiple(urls: list[str], forceFresh: bool = False) -> list[dict
     if not urls or urls is None or not isinstance(urls, list):
         raise ValueError("Invalid URLs. Please provide a list of URLs.")
 
-    num_concurrent_requests = 100
-    connector = aiohttp.TCPConnector(limit=num_concurrent_requests)
+    num_concurrent_requests = 100  # number of concurrent requests
+    connector = aiohttp.TCPConnector(
+        limit=num_concurrent_requests
+    )  # create a new connector
     async with aiohttp.ClientSession(connector=connector):
         results = []
-        for i in range(0, len(urls), num_concurrent_requests):
-            batch = urls[i : i + num_concurrent_requests]
-            tasks = [asyncio.create_task(fetch_data(url, forceFresh)) for url in batch]
-            results.extend(await asyncio.gather(*tasks))
+        for i in range(
+            0, len(urls), num_concurrent_requests
+        ):  # iterate over the URLs in batches
+            batch = urls[i : i + num_concurrent_requests]  # get the current batch
+            tasks = [
+                asyncio.create_task(fetch_data(url, forceFresh)) for url in batch
+            ]  # create tasks for each URL in the batch
+            results.extend(
+                await asyncio.gather(*tasks)
+            )  # close the tasks and add the results to the list
         return results
 
 
@@ -163,10 +180,9 @@ def parseDateTime(text: str) -> datetime:
     Raises:
         ValueError: If the text is None or empty or the datetime cannot be parsed
     """
-    if text is None or len(text) == 0:
+    if text is None or len(text) == 0:  # check if the text is empty
         raise ValueError("Text must not be None or empty")
 
-    ## Support none-ISO8601 datetime formats
     try:
         return datetime.fromisoformat(text)
     except ValueError:
@@ -197,25 +213,27 @@ def parseDateTime(text: str) -> datetime:
 
 async def parseSPDXLicenseURL(input_str: str) -> str:
     """
-    Parses a available_license URL to an SPDX available_license url.
+    This function takes a string input and searches for a matching SPDX license URL.
 
     Args:
-        input_str (str): The available_license URL to parse
+        input_str (str): The input string to search for. This can be a license name, SPDX ID, URL, etc.
 
     Returns:
-        str: The SPDX available_license URL
+        str: The SPDX license URL
     """
     spdx_base_url = "https://spdx.org/licenses"
     file_format = "json"
 
-    if input_str in known_licenses:
+    if input_str in known_licenses:  # check if the input string is already known
         logger.debug(
             f"Using cached available_license URL for {input_str}: {known_licenses[input_str]}"
         )
         return known_licenses[input_str]
 
     # Fetch the list of licenses once
-    available_licenses = await fetch_data(f"{spdx_base_url}/licenses.json")
+    available_licenses = await fetch_data(
+        f"{spdx_base_url}/licenses.json"
+    )  # fetch the list of licenses
     available_licenses = available_licenses["licenses"]
 
     for available_license in available_licenses:  # iterate over the licenses
@@ -239,10 +257,10 @@ async def parseSPDXLicenseURL(input_str: str) -> str:
         ):  # check if the input string is the available_license ID (e.g. MIT)
             known_licenses[input_str] = url
             return url
-        elif "seeAlso" in available_license and checkTextIsSimilar(
-            input_str, available_license["seeAlso"]
-        ):
-            # check if the input string is in the seeAlso list (e.g. [https://opensource.org/license/mit/])
+        elif (
+            "seeAlso" in available_license
+            and checkTextIsSimilar(input_str, available_license["seeAlso"])
+        ):  # check if the input string is in the seeAlso list (e.g. [https://opensource.org/license/mit/])
             known_licenses[input_str] = url
             return url
         elif "name" in available_license and checkTextIsSimilar(
@@ -257,7 +275,7 @@ async def parseSPDXLicenseURL(input_str: str) -> str:
             return url
 
     logger.warning(f"Could not parse available_license URL {input_str}")
-    return input_str
+    return input_str  # return the input string if no match was found
 
 
 def checkTextIsSimilar(original: str, target: list[str] | str) -> bool:
@@ -320,19 +338,3 @@ def checkTextIsSimilar(original: str, target: list[str] | str) -> bool:
             return True
 
     return False
-
-
-if __name__ == "__main__":
-    print(asyncio.run(parseSPDXLicenseURL("https://opensource.org/licenses/MIT")))
-    print(asyncio.run(parseSPDXLicenseURL("MIT")))
-    print(
-        asyncio.run(
-            parseSPDXLicenseURL(
-                "https://creativecommons.org/licenses/by-sa/4.0/legalcode"
-            )
-        )
-    )
-
-    print("This module is not meant to be executed directly.")
-    print("Please import the module and use its functions.")
-    exit(1)

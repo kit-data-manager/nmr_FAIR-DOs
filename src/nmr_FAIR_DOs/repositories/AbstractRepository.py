@@ -32,16 +32,21 @@ logger = logging.getLogger(__name__)
 class AbstractRepository(ABC):
     """
     An abstract class representing a repository.
+    It defines the methods that must be implemented by any repository class.
+
+    Attributes:
+        repositoryID (str): An identifier for the repository that is used to reference it internally. This is not exposed to the outside or published in an FAIR-DO. (abstract)
     """
 
     @property
     @abstractmethod
     def repositoryID(self) -> str:
         """
-        Returns an identifier for the repository.
+        Returns an internal identifier for the repository.
+        This is not exposed to the outside or published in an FAIR-DO.
 
         Returns:
-            str: The id of the repository
+            str: The internal id of the repository
         """
         return NotImplemented
 
@@ -54,7 +59,8 @@ class AbstractRepository(ABC):
             list[dict]: A list of all resources available in the repository
             None: If no resources are available in the repository
         """
-        return NotImplemented
+        # By default, return all resources available in the repository for the entire time frame from the beginning of time to the end of time
+        return await self.getResourcesForTimeFrame(datetime.min, datetime.max)
 
     @abstractmethod
     async def getResourcesForTimeFrame(
@@ -76,16 +82,23 @@ class AbstractRepository(ABC):
     async def extractPIDRecordFromResource(
         self,
         resource: dict,
-        addEntries: Callable[
+        add_relationship: Callable[
             [str, list[PIDRecordEntry], Callable[[str], None] | None], str
         ],
     ) -> PIDRecord | None:
         """
         Extracts a PID record from a resource of the repository.
+        This method expects an `add_relationship` function that is used to create relationships between FAIR DOs.
+        For more information on the `add_relationship` function, see in ``lib.py``.
+        It expects the following arguments in the following order: (str, list[PIDRecordEntry], Callable[[str], None] | None) and returns the actual PID of the target FAIR-DO.
+        The first argument is the (presumed) PID of the target record.
+        The second argument is a list of entries to add to the target record.
+        Optionally, the third argument is a function that is executed on success of adding the entries to the target record.
+        It is meant to be used to create the back-reference relationship from the target record to the source record.
 
         Args:
             resource (dict): The resource to extract the PID record from
-            addEntries (function): The function to add entries to a PIDRecord. This function expects the following arguments in the following order: (str, list[PIDRecordEntry]) and returns a str. The first argument is the (presumed) PID of the target record, the second argument is a list of entries to add to the target record. It returns the PID of the target record.
+            add_relationship (function): The function to add entries to a PIDRecord. This function expects the following arguments in the following order: (str, list[PIDRecordEntry], Callable[[str], None] | None) and returns a str.
 
         Returns:
             PIDRecord: The PID record extracted from the resource
@@ -97,6 +110,7 @@ class AbstractRepository(ABC):
     def getRepositoryFDO(self) -> PIDRecord:
         """
         Define the PID record for the repository.
+        This record will be referenced by all extracted PID records from the repository in the "hasPrimarySource" relationship.
 
         Returns:
             PIDRecord: The PID record for the repository

@@ -213,7 +213,7 @@ def addRelationship(
     # Check if the PID record exists in Elasticsearch and get it from the Typed PID-Maker
     try:
         logger.info(
-            "Couldn't find a record to add entries to. Calling addEntries function. Starting to search in elasticsearch."
+            "Couldn't find a record to add entries to. Calling add_relationship function. Starting to search in elasticsearch."
         )
         pid = elasticsearch.searchForPID(
             cleartext_presumed_pid
