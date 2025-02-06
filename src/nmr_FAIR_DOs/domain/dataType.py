@@ -15,12 +15,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import json
 import logging
 
 import requests
 
-typeMappings: dict[str, str] = {}
+typeMappings: dict[str, str] = {"URL": "URL"}
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -39,8 +38,10 @@ async def extractDataTypeNameFromPID(pid):
         logger.debug("Requesting data type name from Data Type Registry: " + url)
         # Get the data type name from the Data Type Registry
         response = requests.get(url)
-        response = json.loads(response.text)
+        response_json = response.json()
+
+        name = response_json["name"] if "name" in response_json else pid
         # Store the data type name in the typeMappings dictionary
-        typeMappings[pid] = response["name"]
+        typeMappings[pid] = name
         # Return the data type name
-        return response["name"]
+        return name

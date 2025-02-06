@@ -369,4 +369,7 @@ legacyRecords/
 FAIR-DO-Lab/
 tpm-test/
 elastic-test/
-tmp/
+tmp/!/pid_records_all.json
+!/biggest_FDO.json
+!/most_informative_FDO.json
+!/pid_records_all.json

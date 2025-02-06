@@ -265,11 +265,11 @@ async def create_pidRecords_from_resources(
                     repo_FDO.getPID(),
                     "hadPrimarySource",
                 )
-                repo_FDO.addEntry(
-                    "21.T11148/4fe7cde52629b61e3b82",
-                    pid_record.getPID(),
-                    "isMetadataFor",
-                )
+                # repo_FDO.addEntry(
+                #     "21.T11148/4fe7cde52629b61e3b82",
+                #     pid_record.getPID(),
+                #     "isMetadataFor",
+                # )
                 records_to_create.append(pid_record)
             else:
                 logger.error(f"No PID record extracted from {resource}")

@@ -63,6 +63,7 @@ async def fetch_data(url: str, forceFresh: bool = False) -> dict:
                 return result
 
     try:
+        logger.debug(f"Fetching {url}")
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status == 200:
@@ -98,11 +99,12 @@ async def fetch_multiple(urls: list[str], forceFresh: bool = False) -> list[dict
     if not urls or urls is None or not isinstance(urls, list):
         raise ValueError("Invalid URLs. Please provide a list of URLs.")
 
-    connector = aiohttp.TCPConnector(limit=100)
+    num_concurrent_requests = 100
+    connector = aiohttp.TCPConnector(limit=num_concurrent_requests)
     async with aiohttp.ClientSession(connector=connector):
         results = []
-        for i in range(0, len(urls), 100):
-            batch = urls[i : i + 100]
+        for i in range(0, len(urls), num_concurrent_requests):
+            batch = urls[i : i + num_concurrent_requests]
             tasks = [asyncio.create_task(fetch_data(url, forceFresh)) for url in batch]
             results.extend(await asyncio.gather(*tasks))
         return results
