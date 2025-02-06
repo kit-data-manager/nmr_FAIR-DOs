@@ -79,7 +79,3 @@ def buildElastic(
     """
     logger.info("Building the ElasticSearch index for all available resources.")
     asyncio.run(add_all_existing_pidRecords_to_elasticsearch(from_file))
-
-
-if __name__ == "__main__":
-    app()

@@ -235,7 +235,7 @@ def addEntries(
 
 async def create_pidRecords_from_resources(
     repo: AbstractRepository, resources: list[dict]
-):
+) -> None:
     """
     Create PID records for the given URLs.
 
@@ -265,7 +265,7 @@ async def create_pidRecords_from_resources(
                     repo_FDO.getPID(),
                     "hadPrimarySource",
                 )
-                # repo_FDO.addEntry(
+                # repo_FDO.addEntry( TODO: add this entry to the repository FDO; disabled due to size constraints of Handle records (problems at ~400 KB; actual size of repository FDO: ~2.9 MB)
                 #     "21.T11148/4fe7cde52629b61e3b82",
                 #     pid_record.getPID(),
                 #     "isMetadataFor",

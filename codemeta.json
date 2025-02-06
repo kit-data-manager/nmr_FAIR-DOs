@@ -23,7 +23,11 @@
     "FAIR-DOs",
     "metadata",
     "repositories",
-    "NMR"
+    "NMR",
+    "Chemotion",
+    "NMRXiv",
+    "Elasticsearch",
+    "KIT-Data-Manager"
   ],
   "maintainer": [
     {

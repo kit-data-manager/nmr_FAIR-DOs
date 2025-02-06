@@ -2,9 +2,6 @@
 ![Docs](https://img.shields.io/badge/read-docs-success)
 ](https://maximiliani.github.io/nmr_FAIR-DOs)
 [
-![Test Coverage](https://maximiliani.github.io/nmr_FAIR-DOs/main/coverage_badge.svg)
-](https://maximiliani.github.io/nmr_FAIR-DOs/main/coverage)
-[
 ![CI](https://img.shields.io/github/actions/workflow/status/maximiliani/nmr_FAIR-DOs/ci.yml?branch=main&label=ci)
 ](https://github.com/maximiliani/nmr_FAIR-DOs/actions/workflows/ci.yml)
 
