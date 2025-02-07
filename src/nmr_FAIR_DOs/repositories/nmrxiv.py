@@ -457,7 +457,7 @@ class NMRXivRepository(AbstractRepository):
             else:  # Add the DOI to the PID record if no download URL is available
                 fdo.addEntry(
                     "21.T11148/b8457812905b83046284",
-                    f"https://dx.doi.org/{original_resource["doi"].replace("https://doi.org/", "")}",
+                    f"https://dx.doi.org/{original_resource['doi'].replace("https://doi.org/", "")}",
                     "digitalObjectLocation",
                 )
 
