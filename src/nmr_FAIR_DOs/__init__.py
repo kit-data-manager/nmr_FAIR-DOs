@@ -1,5 +1,3 @@
-"""Top level module of the project."""
-
 #  SPDX-FileCopyrightText: 2025 Karlsruhe Institute of Technology <maximilian.inckmann@kit.edu>
 #  SPDX-License-Identifier: Apache-2.0
 #
@@ -22,3 +20,17 @@ from typing import Final
 
 # Set version, it will use version from pyproject.toml if defined
 __version__: Final[str] = version(__package__ or __name__)
+
+"""
+This package contains the source code of the project.
+
+The package is structured as follows:
+
+- `connectors/`: Contains the connectors to the different data sources.
+- `domain/`: Contains the domain classes of the project.
+- `repositories/`: Contains the repositories for which FAIR-DOs are generated.
+- `cli.py`: Contains the command line interface of the project.
+- `env.py`: Manages the environment variables of the project.
+- `lib.py`: Contains the main business logic of the project.
+- `utils.py`: Contains various utility functions.
+"""

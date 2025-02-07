@@ -4,8 +4,8 @@ site_description: "This tool extracts metadata regarding NMR data from multiple 
   and creates FAIR-DOs for them."
 repo_name: "nmr_FAIR-DOs"
 
-site_url: "https://maximiliani.github.io/nmr_FAIR-DOs"
-repo_url: "https://github.com/maximiliani/nmr_FAIR-DOs"
+site_url: "https://kit-data-manager.github.io/nmr_FAIR-DOs"
+repo_url: "https://github.com/kit-data-manager/nmr_FAIR-DOs"
 
 # add support for buttons to edit a documentation page/section (both github and gitlab):
 edit_uri: "edit/main/docs/"

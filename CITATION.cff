@@ -6,7 +6,7 @@ title: "nmr_FAIR-DOs"
 version: "0.1.0"
 abstract: "This tool extracts metadata regarding NMR data from multiple repositories
   and creates FAIR-DOs for them."
-repository-code: "https://github.com/maximiliani/nmr_FAIR-DOs"
+repository-code: "https://github.com/kit-data-manager/nmr_FAIR-DOs"
 license: "Apache-2.0"
 keywords:
 - FAIR-DOs
@@ -28,4 +28,4 @@ contact:
   family-names: Inckmann
   email: maximilian.inckmann@kit.edu
   given-names: Maximilian
-url: https://maximiliani.github.io/nmr_FAIR-DOs
+url: https://kit-data-manager.github.io/nmr_FAIR-DOs

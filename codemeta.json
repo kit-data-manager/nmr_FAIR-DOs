@@ -41,8 +41,8 @@
   "license": [
     "https://spdx.org/licenses/Apache-2.0"
   ],
-  "softwareHelp": "https://maximiliani.github.io/nmr_FAIR-DOs",
-  "codeRepository": "https://github.com/maximiliani/nmr_FAIR-DOs",
-  "buildInstructions": "https://maximiliani.github.io/nmr_FAIR-DOs",
-  "url": "https://maximiliani.github.io/nmr_FAIR-DOs"
+  "softwareHelp": "https://kit-data-manager.github.io/nmr_FAIR-DOs",
+  "codeRepository": "https://github.com/kit-data-manager/nmr_FAIR-DOs",
+  "buildInstructions": "https://kit-data-manager.github.io/nmr_FAIR-DOs",
+  "url": "https://kit-data-manager.github.io/nmr_FAIR-DOs"
 }
