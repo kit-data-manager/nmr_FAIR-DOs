@@ -14,3 +14,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+"""
+This module contains the domain classes of the nmr_FAIR_DOs package.
+
+- `nmr_FAIR_DOs.domain.PIDRecord`: This class represents a PID record.
+- `nmr_FAIR_DOs.domain.PIDRecordEntry`: This class represents a single entry in a PID record. It is heavily used by the PIDRecord class.
+
+Additionally, this module contains a helper function to extract the data type name from a PID. See `nmr_FAIR_DOs.domain.dataType.extractDataTypeNameFromPID`.
+"""

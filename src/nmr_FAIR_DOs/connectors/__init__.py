@@ -14,3 +14,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+This module contains the connectors of the nmr_FAIR_DOs package.
+
+- `nmr_FAIR_DOs.connectors.TPMConnector`: This class is a connector to the Typed PID Maker API.
+- `nmr_FAIR_DOs.connectors.ElasticsearchConnector`: This class is a connector to the Elasticsearch API.
+- `nmr_FAIR_DOs.connectors.Terminology`: This class is a connector to the Terminology API.
+"""

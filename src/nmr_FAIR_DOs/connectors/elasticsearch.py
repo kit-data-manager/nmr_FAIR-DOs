@@ -1,3 +1,6 @@
+"""
+This module provides a connector to an Elasticsearch instance to store and retrieve FAIR-DOs.
+"""
 #  SPDX-FileCopyrightText: 2025 Karlsruhe Institute of Technology <maximilian.inckmann@kit.edu>
 #  SPDX-License-Identifier: Apache-2.0
 #
@@ -31,10 +34,23 @@ fh = logging.FileHandler(f"{__name__}.log")
 fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 
+# List of keys that should always be a list in elasticsearch
 always_as_list = ["isMetadataFor", "hasMetadata", "contact"]
 
 
 async def _generate_elastic_JSON_from_PIDRecord(pidRecord):
+    """
+    Generates a JSON object from a PID record that can be stored in Elasticsearch.
+
+    Args:
+        pidRecord (PIDRecord): The PID record to generate the JSON object from.
+
+    Returns:
+        dict: The generated JSON object.
+
+    Raises:
+        Exception: If the timestamp entry does not exist in the PID record.
+    """
     result: dict = {"pid": pidRecord.getPID()}
 
     def addToResult(human_readable_key: str, value_to_add: str):
@@ -46,7 +62,7 @@ async def _generate_elastic_JSON_from_PIDRecord(pidRecord):
             human_readable_key (str): The key to add to the result
             value_to_add (str): The value to add to the result
         """
-        if human_readable_key in result:
+        if human_readable_key in result:  # if the key already exists in the result
             if isinstance(
                 result[human_readable_key], list
             ):  # if the value is already a list
@@ -71,8 +87,13 @@ async def _generate_elastic_JSON_from_PIDRecord(pidRecord):
             result[human_readable_key] = value_to_add  # create a list with the value
 
     # Extract the entries from the PID record
-    for attribute, value in pidRecord.getEntries().items():
-        key = await extractDataTypeNameFromPID(attribute)
+    for (
+        attribute,
+        value,
+    ) in pidRecord.getEntries().items():  # iterate over the entries of the PID record
+        key = await extractDataTypeNameFromPID(
+            attribute
+        )  # extract the data type name from the DTR
         for i in value:  # iterate over the values of the PID record entry
             if isinstance(i, PIDRecordEntry):  # if the value is a PIDRecordEntry
                 if isinstance(
@@ -92,16 +113,27 @@ async def _generate_elastic_JSON_from_PIDRecord(pidRecord):
                 addToResult(key, i["value"])  # add the key and the value to the result
 
     # Extract the timestamp from the PID record or use the current time as timestamp
-    if pidRecord.entryExists("21.T11148/aafd5fb4c7222e2d950a"):
+    if pidRecord.entryExists(
+        "21.T11148/aafd5fb4c7222e2d950a"
+    ):  # if dateCreated exists in the PID record use it as timestamp
         result["timestamp"] = pidRecord.getEntries()["21.T11148/aafd5fb4c7222e2d950a"][
             0
         ].value
-    else:
+    else:  # if dateCreated does not exist in the PID record use the current time as timestamp
         result["timestamp"] = datetime.now().isoformat()
     return result
 
 
 class ElasticsearchConnector:
+    """
+    This class provides a connector to an Elasticsearch instance to store and retrieve FAIR-DOs.
+
+    Attributes:
+        url (str): The URL of the Elasticsearch instance
+        apikey (str): The API key to access the Elasticsearch instance
+        indexName (str): The name of the index to use
+    """
+
     def __init__(self, url: str, apikey: str, indexName: str):
         """
         Creates an Elasticsearch connector
@@ -112,11 +144,20 @@ class ElasticsearchConnector:
             indexName (str): The name of the index to use
         """
 
+        if not url or url == "":  # if the URL is None, raise an error
+            raise ValueError("URL must not be None or empty")
+        if (
+            not indexName or indexName == ""
+        ):  # if the index name is None, raise an error
+            raise ValueError("Index name must not be None or empty")
+
         self._url = url
         self._apikey = apikey
         self._indexName = indexName
 
-        self._client = Elasticsearch(hosts=self._url, api_key=self._apikey)
+        self._client = Elasticsearch(
+            hosts=self._url, api_key=self._apikey
+        )  # create the Elasticsearch client
 
         logger.info(f"Connected to Elasticsearch: {self._client.info()}")
 
@@ -127,18 +168,29 @@ class ElasticsearchConnector:
         # Create the index if it does not exist
         if self._client.indices.exists(index=indexName):
             logger.info("Index " + indexName + " already exists")
-        else:
+        else:  # if the index does not exist, create it
             self._client.indices.create(index=indexName)
             logger.info("Created index " + indexName)
 
     async def addPIDRecord(self, pidRecord: PIDRecord):
-        result = await _generate_elastic_JSON_from_PIDRecord(pidRecord)
+        """
+        Adds a PID record to the Elasticsearch index.
+
+        Args:
+            pidRecord (PIDRecord): The PID record to add to the Elasticsearch index.
+        """
+        result = await _generate_elastic_JSON_from_PIDRecord(
+            pidRecord
+        )  # generate the JSON object from the PID record
 
         response = self._client.index(
             index=self._indexName, id=result["pid"], document=result
-        )
+        )  # store the JSON object in the Elasticsearch index
 
-        if response.meta.status not in [200, 201]:
+        if response.meta.status not in [
+            200,
+            201,
+        ]:  # if the response status is not 200 or 201, log an error
             logger.error(
                 "Error storing FAIR-DO in elasticsearch index: " + result["pid"],
                 result,
@@ -150,33 +202,60 @@ class ElasticsearchConnector:
         )
 
     async def addPIDRecords(self, pidRecords: list[PIDRecord]):
-        # bulk insert the PID records into the index with the elastic bulk API
+        """
+        Adds a list of PID records to the Elasticsearch index.
+        This method uses the bulk API of Elasticsearch to store the PID records more efficiently.
 
+        Args:
+            pidRecords (list[PIDRecord]): The list of PID records to add to the Elasticsearch index.
+
+        Raises:
+            Exception: If the response status is not 200 or 201.
+        """
+        # Generate the JSON objects from the PID records
         actions = [
             {
                 "_op_type": "create",
                 "_index": self._indexName,
                 "_id": pidRecord.getPID(),
                 "_source": await _generate_elastic_JSON_from_PIDRecord(pidRecord),
+                # generate the JSON object from the PID record
             }
-            for pidRecord in pidRecords
+            for pidRecord in pidRecords  # iterate over the PID records
         ]
 
-        response = bulk(self._client, actions)
+        response = bulk(
+            self._client, actions
+        )  # store the JSON objects in the Elasticsearch index
         logger.debug(
             "Elasticsearch response for bulk insert of PID records: ", response
         )
 
     def searchForPID(self, presumedPID: str) -> str:
-        response = self._client.search(
+        """
+        Searches for a PID in the Elasticsearch index.
+        If a record with the PID or the digitalObjectLocation equal to the presumed PID is found, the PID is returned.
+
+        Args:
+            presumedPID (str): The PID to search for.
+
+        Returns:
+            str: The PID of the found record.
+
+        Raises:
+            Exception: If the response status is not 200.
+            Exception: If no record with the PID or the digitalObjectLocation equal to the presumed PID is found.
+            Exception: If the PID of the found record does not match the presumed PID.
+        """
+        response = self._client.search(  # search for the PID in the Elasticsearch index
             index=self._indexName,
             body={
                 "query": {
                     "multi_match": {
                         "type": "best_fields",
-                        "query": presumedPID,
-                        # "query": "10.14272/RAXXELZNTBOGNW-UHFFFAOYSA-N/CHMO0000595",
+                        "query": presumedPID,  # search for the presumed PID
                         "fields": ["digitalObjectLocation", "pid"],
+                        # search in the digitalObjectLocation and the pid fields
                     }
                 }
             },
@@ -186,7 +265,9 @@ class ElasticsearchConnector:
             "Elasticsearch response for search query: " + presumedPID, response
         )
 
-        if response.meta.status != 200:
+        if (
+            response.meta.status != 200
+        ):  # if the response status is not 200, log an error and raise an exception
             logger.error(
                 "Error retrieving FAIR-DO from elasticsearch index: " + presumedPID,
                 response,
@@ -196,13 +277,15 @@ class ElasticsearchConnector:
                 response,
             )
 
-        result = (
-            response["hits"]["hits"][0]["_source"]
+        result = (  # get the result from the response
+            response["hits"]["hits"][0][
+                "_source"
+            ]  # get the source of the first hit in the response if it exists
             if response["hits"]["total"]["value"] > 0
-            else None
+            else None  # if no hit exists, set the result to None
         )
 
-        if result is None:
+        if result is None:  # if no result is found, log an error and raise an exception
             logger.warning(
                 "No FAIR-DO found in elasticsearch index: " + presumedPID, response
             )
@@ -212,7 +295,7 @@ class ElasticsearchConnector:
         elif (
             result["pid"] != presumedPID
             and result["digitalObjectLocation"] != presumedPID
-        ):
+        ):  # if the PID of the found record does not match the presumed PID, log an error and raise an exception
             logger.warning(
                 "PID of retrieved FAIR-DO does not match requested PID: " + presumedPID,
                 result,
@@ -222,9 +305,9 @@ class ElasticsearchConnector:
                 result,
             )
 
-        pid = result["pid"]
+        pid = result["pid"]  # get the PID from the result
         logger.info(
             "Retrieved possible FAIRDO from elasticsearch index: " + pid, result
         )
 
-        return pid
+        return pid  # return the PID

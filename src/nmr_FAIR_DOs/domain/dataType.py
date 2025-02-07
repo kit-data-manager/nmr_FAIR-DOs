@@ -26,20 +26,38 @@ logging.getLogger().setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-async def extractDataTypeNameFromPID(pid):
+async def extractDataTypeNameFromPID(pid) -> str:
+    """
+    Extracts the data type name from a PID.
+    This PID is used in the key coloumn of a given PID record and references to a data type (inside a data type registry).
+    Inside of the data type registry (DTR), the data type is stored and contains much more information (i.e., description, provenance, regex, etc.).
+    For more information on the information available in the data type registry, have a look at [data type registry](https://typeregistry.lab.pidconsortium.net/)
+
+    Args:
+        pid (str): The PID to extract the data type name from.
+
+    Returns:
+        str: A human-readable name of the data type.
+    """
     # Check if the data type name is already known
     if pid in typeMappings:
         # Return the known data type name
         return typeMappings[pid]
-    else:
+    else:  # If the data type name is not known
+        # Resolve the PID via the Handle.net resolver. When resolving a data type PID, the user is automatically redirected to the data type registry.
         url = requests.get("https://hdl.handle.net/" + pid).url
-        url = url.replace("#", "")
-        # url = "https://dtr-test.pidconsortium.net/objects/" + pid
+        url = url.replace(
+            "#", ""
+        )  # The URL might contain a hash which signalizes the DTR to render a webpage. This webpage is not useful for the extraction of the data type name.
+
+        # Request the data type from the data type registry
         logger.debug("Requesting data type name from Data Type Registry: " + url)
-        # Get the data type name from the Data Type Registry
-        response = requests.get(url)
+        response = requests.get(
+            url
+        )  # Request the data type from the data type registry
         response_json = response.json()
 
+        # Extract the data type name from the response. If the name is not available, return the PID as the name to avoid errors.
         name = response_json["name"] if "name" in response_json else pid
         # Store the data type name in the typeMappings dictionary
         typeMappings[pid] = name
