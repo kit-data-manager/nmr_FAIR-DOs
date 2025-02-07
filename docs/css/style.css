@@ -21,3 +21,8 @@
  */
 
 /* you can add your CSS customizations in this file */
+:root > * {
+    --md-primary-fg-color: #00876C;
+    --md-primary-fg-color--light: #ECB7B7;
+    --md-primary-fg-color--dark: #00876C;
+}
