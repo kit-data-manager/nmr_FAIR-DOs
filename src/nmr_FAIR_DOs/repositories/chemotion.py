@@ -332,7 +332,7 @@ class ChemotionRepository(AbstractRepository):
 
         fdo.addEntry(
             "21.T11148/b8457812905b83046284",
-            f"https://dx.doi.org/{chemotion_content['@id'].replace("https://doi.org/", "")}",
+            f"https://dx.doi.org/{chemotion_content['@id'].replace('https://doi.org/', '')}",
             "digitalObjectLocation",
         )
 

@@ -457,7 +457,7 @@ class NMRXivRepository(AbstractRepository):
             else:  # Add the DOI to the PID record if no download URL is available
                 fdo.addEntry(
                     "21.T11148/b8457812905b83046284",
-                    f"https://dx.doi.org/{original_resource['doi'].replace("https://doi.org/", "")}",
+                    f"https://dx.doi.org/{original_resource['doi'].replace('https://doi.org/', '')}",
                     "digitalObjectLocation",
                 )
 
@@ -496,7 +496,7 @@ class NMRXivRepository(AbstractRepository):
             )
 
         try:
-            logger.info(f"mapping dataset to FAIR-DO: {bioschema_dataset["@id"]}")
+            logger.info(f"mapping dataset to FAIR-DO: {bioschema_dataset['@id']}")
             fdo = await self._mapGenericInfo2PIDRecord(
                 dataset
             )  # Get the generic information for the dataset
@@ -518,7 +518,7 @@ class NMRXivRepository(AbstractRepository):
                     )
                 else:
                     logger.info(
-                        f"Measurement technique in entry {bioschema_dataset["@id"]} has no URL: {bioschema_dataset['measurementTechnique']}"
+                        f"Measurement technique in entry {bioschema_dataset['@id']} has no URL: {bioschema_dataset['measurementTechnique']}"
                     )
 
             if (
@@ -644,7 +644,7 @@ class NMRXivRepository(AbstractRepository):
                         if (
                             "name" in part
                         ):  # Add the name of the part to the PID record if available
-                            new_name = f"{original_dataset["name"]}-{part["name"]}"
+                            new_name = f"{original_dataset['name']}-{part['name']}"
                             fdo.updateEntry("21.T11148/6ae999552a0d2dca14d6", new_name)
                         if "hasBioChemEntityPart" in part:
                             biochem_part = part["hasBioChemEntityPart"]
@@ -682,7 +682,7 @@ class NMRXivRepository(AbstractRepository):
                                     and formula != ""
                                     and len(formula) > 1
                                 ):  # Check for meaningful formula
-                                    new_name = f"{original_dataset["name"]}-{formula}"  # Add the formula to the name of the part
+                                    new_name = f"{original_dataset['name']}-{formula}"  # Add the formula to the name of the part
                                     fdo.deleteEntry("21.T11969/6ae999552a0d2dca14d6")
                                     fdo.addEntry(
                                         "21.T11148/6ae999552a0d2dca14d6",
