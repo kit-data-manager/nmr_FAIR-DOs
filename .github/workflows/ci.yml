@@ -137,6 +137,9 @@ jobs:
         fi
         poetry run mike deploy -u --push ${{ github.ref_name }} $SET_LATEST
 
+    - name: mkdocs gh-deploy
+      run: poetry run mkdocs gh-deploy
+
   publish:
     # if a version tag is pushed + tests + docs completed -> do release
     needs: docs
