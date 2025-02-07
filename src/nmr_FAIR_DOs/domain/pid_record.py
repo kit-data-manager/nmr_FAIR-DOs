@@ -362,7 +362,7 @@ class PIDRecord:
                         entries.append(PIDRecordEntry(key, entry["value"]))
 
             logger.debug(
-                f"Extracted PID record from JSON: {PIDRecord(input_json["pid"], entries)}"
+                f"Extracted PID record from JSON: {PIDRecord(input_json['pid'], entries)}"
             )
             return PIDRecord(input_json["pid"], entries)
 

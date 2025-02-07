@@ -334,7 +334,7 @@ class NMRXivRepository(AbstractRepository):
             bioschema_resource = resource["bioschema"]
 
             logger.debug(
-                f"Mapping generic info to PID Record: {original_resource["doi"]}"
+                f"Mapping generic info to PID Record: {original_resource['doi']}"
             )
             fdo = PIDRecord(encodeInBase64(original_resource["doi"]))
 

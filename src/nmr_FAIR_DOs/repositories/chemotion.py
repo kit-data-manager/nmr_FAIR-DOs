@@ -312,7 +312,7 @@ class ChemotionRepository(AbstractRepository):
         Returns:
             PIDRecord: The PID record mapped from the generic information
         """
-        logger.debug(f"Mapping generic info to PID Record: {chemotion_content["@id"]}")
+        logger.debug(f"Mapping generic info to PID Record: {chemotion_content['@id']}")
 
         fdo = PIDRecord(
             encodeInBase64(chemotion_content["@id"].replace("https://doi.org/", ""))
