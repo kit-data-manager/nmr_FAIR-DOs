@@ -45,7 +45,7 @@ repos:
   # Various general + format-specific helpers
   # (run last to fix general syntactic defects)
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       # - id: mixed-line-ending
       #   args: [--fix=lf]
