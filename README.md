@@ -60,7 +60,7 @@ this problem. If the installed version is older, you can upgrade it with
 `pip install --upgrade pip` and then try again to install the package.
 
 **You can find more information in the
-[documentation](https://kit-data-manager.github.io/nmr_FAIR-DOs/main).**
+[documentation](https://kit-data-manager.github.io/nmr_FAIR-DOs/).**
 
 <!-- --8<-- [start:citation] -->
 
